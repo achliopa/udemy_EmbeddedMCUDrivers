@@ -213,3 +213,39 @@ int main(void) {
 ## Section 10 - Understanding MCU Memory Map
 
 ### Lecture 40 - Understanding Memory Map of the MCU: Part 1
+
+* Memory Bus of MCU (STM32F446XX)
+* ARM Cortex M4
+* width of system bus is 32 bits
+* the proc can produce 2^32 different addreses (4GB)
+* available range is 0x0000_0000 to 0xFFFF_FFFF
+* to see the mem map we see the ref manual of the microcontroller
+* we can see the generic mem map of our MCU (cortex M4 gtenric) in section 2.2.2 of [ref manual](https://www.st.com/content/ccc/resource/technical/document/reference_manual/4d/ed/bc/89/b5/70/40/dc/DM00135183.pdf/files/DM00135183.pdf/jcr:content/translations/en.DM00135183.pdf) and mem map of device peripherals in STM32F446xx register boundary addresses table.
+* in this table we have the register add4ess range. the bus, the reg name and a description
+* eg the GPIOA reg base address is 0x4002_0000
+* when the processor produces this address on the system bus (AHB1) it is actually referring to the GPIOA registers
+* we must understand tha MCU peripherals resinde in SoC but are processor external and communicate with the proc through the vaious System Buses
+
+### Lecture 41 - Understanding Memory Map of the MCU: Part 2
+
+* we  dive into our MCUs datasheet (reference manual)
+* in our previous course we talked in depth on the Cortex M4 me map which is common for all devices using it
+* core feats like FLASH, SRAM , bitbanded areas are common
+* peripeherals vary per mcu family
+
+### Lecture 42 - Understanding Memory Map of the MCU: Part 3
+
+* Questions to answer based on STM32F446XX Ref Manual:
+	* What's the base address of AHB1 Bus peripherals? 0x4002_0000
+	* What's the base address of GPIOA registers? 0x4002_0000
+	* What's the base address of RCC engine registers of the MCU? 0x4002_3800
+	* What's the base address of APB1 peripherals? 0x4000_0000
+	* What's the base address of FLASH Memory? 0x08000_0000 
+	* What's the base address of SRAM2? 0x2001_0000 (SRAM1 base addr 0x2000_0000 + 112KB)
+	* What's the base address of ADC Registers? 0x4001_2000
+* we see that System Bus Mem regions contain their peripherals MCU specific registers
+* in the MCU header file we can use these addresses as Macros
+
+## Section 11 - MCU Bus Interfaces
+
+### Lecture 43 - MCU Bus Interfaces Explanation Part 1: I-Code/D-Code/S-Bus
