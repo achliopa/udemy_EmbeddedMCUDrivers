@@ -249,3 +249,70 @@ int main(void) {
 ## Section 11 - MCU Bus Interfaces
 
 ### Lecture 43 - MCU Bus Interfaces Explanation Part 1: I-Code/D-Code/S-Bus
+
+* we can havea top level look of the various buses in the MCU block diagram (Fig3) of [STM32F446 Datasheet](https://www.st.com/resource/en/datasheet/stm32f446re.pdf)
+* Some notes on this MCU bus interfaces:
+	* Cortex M4 Proc has several bus interfaces
+	* Proc talks to Peripherals through the bus interfaces
+* Cortex M proc exposses 3 types of bus interfaces:
+	* I-BUS (instructions bus) = ICode Mem Interface (32bit AHB-Lite)
+	* D-BUS (data bus) = DCode Mem Interface (32bit AHB-Lite)
+	* S-BUS (system bus) = System Interface (32bit AHB-Lite bus)
+* in a prev project we copied data from FLASH to RAM
+* our app program is converted into instructions stored in the MCU program memory (FLASH mem)
+* FLASH mem stores:
+	* Instructions
+	* const data (Read only)
+	* vector tables
+* on chip FLASH mem is external to the proc.
+* proc uses the I-Bus to fetch instructions from the FLASH mem
+* proc uses the D-Bus to read data from the ReadOnly area in the FLASH
+* we rerun 'data_copy' project in debug mode
+* our code reads data from FLASH and copies the to RAM. the read operation is done over the D-BUS
+* onchip FLASH mem (512kB) has a FLASH mem controller interface that connects to the Proc bus interfaces through the on Chip AHB BUS MAtrix  7S8M
+* More info on the Proc bus types we can get on the [Cortex M4 TechRefmanual](http://infocenter.arm.com/help/topic/com.arm.doc.100166_0001_00_en/arm_cortexm4_processor_trm_100166_0001_00_en.pdf) at section 2.3.1
+* Cortex-M4 contains 3 AHB(Advanced High Performance Bus)-Lite bus interfaces and 1 APB(Advanced Peripheral Bus) Interface
+	* I-Bus is used for instruction fetches from Code Mem Space (0x0000_0000 to 0x1FFF_FFFC)
+	* D-Bus is used for data and debug access to Code mem space (0x0000_0000 to 0x1FFF_FFFF)
+	* S-Bus instruction fetch, data and debug access to addr range 0x2000_0000 to 0xDFFF_FFFF and 0xE010_0000 to 0xFFFF_FFFF
+
+### Lecture 44 - MCU Bus Interfaces Explanation Part 2: AHB/APB1/APB2
+
+* if instructions are present in between mem locations 0x0000_0000 to 0x1FFF_FFFC the Cortex proc will fetch them using the ICode bus I/F
+* if instructions are present outside mem locations 0x0000_0000 to 0x1FFF_FFFC the Cortex proc will fetch them using the System bus I/F
+* if data are present in between mem locations 0x0000_0000 to 0x1FFF_FFFF the Cortex proc will access them using the DCode bus I/F
+* if data are present outside mem locations 0x0000_0000 to 0x1FFF_FFFF the Cortex proc will access them using the System bus I/F
+* So FLASH data are accessed via I and D bus while RAM data via S-Bus
+* Peripherals fall outside the I and D bus region so in the S-Bus Region
+* S-Bus is primarily AHB-Lite (AHB1) but it goes to an AHB/APB bridge being converted into 2 APB buses to access certain peripherals
+* The peripherals register mem map tells us which bus they use
+* APB is slower and more energy efficient
+	* AHB-Lite max speed is 180Mhz
+	* APB2 max speed is 90MHz
+	* APB1 max speed is 45MHz
+* GPIO ports hang under AHB1 so can run at full speed
+
+## Lecture 45 -  MCU Bus Interfaces Explanation Part 3: Q/A session
+
+* is it true that S-Bus is not connected to FLASH memory? yes (Figure 3 of MCU ref manual shows the FLASH mem controller)
+* proc can fetch instructions from SRAM over I-code bus? False
+* system bus can operate at speed up to 180MHz? true
+* SRAMs are connected to System Bus I/F? True
+* APB1 bus can operate a speed up to 180MHz ? false
+* A peipheral  whose operate freq must be over 95MHz can connect to APB2 bus? false
+* proc can fetch instructions and data simultaneously from SRAM ? False (only 1 bus)
+* proc can fetch instructions and data simultaneously from FLASH ? True (I and D bus)
+* whats the max val of HCLK of the MCU? 180Mhz
+* whats the max val of P1CLK of the MCU? 45Mhz
+* whats the max val of p2CLK of the MCU? 90Mhz
+* GPIOs and proc comm over AHB1 bus? true
+* USB OTG and proc comm over AHB2 bus? true
+* USB OTG and GPIO can comm to proc simultaneously ? false (only 1 S-Bus)
+* Proc can talk to flash mem and SRAP simultaneously ? true (diff buses)
+
+### Lecture 46 - Understanding MCU Bus Matrix
+
+* to understand it we will use the Fig7 of [STM32 DMA controller App note](https://www.st.com/content/ccc/resource/technical/document/application_note/27/46/7c/ea/2d/91/40/a9/DM00046011.pdf/files/DM00046011.pdf/jcr:content/translations/en.DM00046011.pdf) for STM32F4-7  MCU. For STM32F446 we can look at Fig1 from STM32F446 TRM
+* horizontally we have bus masters and verticaly bus slaves
+* the bus matrix is a matrix that shows the connections of masters to slaves
+* we see the processor is the master of its 3 busses and how the peripherals are slaves to the S-Bus
