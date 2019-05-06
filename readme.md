@@ -316,3 +316,41 @@ int main(void) {
 * horizontally we have bus masters and verticaly bus slaves
 * the bus matrix is a matrix that shows the connections of masters to slaves
 * we see the processor is the master of its 3 busses and how the peripherals are slaves to the S-Bus
+
+## Section 12 - Understanding MCU Clocks and Details
+
+### Lecture 47 - Understanding MCU Clocking System:Part1
+
+* three different sources can drive the system clock (SYSCLK)
+	* HSI oscillator clock
+	* HSE oscillator clock
+	* Main PLL (PLL) clock
+* the device (MCU) have 2 secondary clock sources
+	* 32kHz low-speed internatl RC (LSI RC) which drives the independent watchdog and optionally the RTC used for Auto-wakeup from Stop/Standby mode
+	* 32.768 kHz low-speed external crystel (LSE crystal) which optionally drives the RTC clock (RTCCLK)
+* Physical Clock Sources:
+	* Crystal Oscillator: external component (HSE high speed extrnal)
+	* RC Oscilator: in the SoC (HSI high speed internal)
+	* THe PLL (Phase Locked Loop): in the SoC. generates higher frequency from low frequency
+
+### Lecture 48 - Understanding MCU Clocking System:Part2
+
+* in MCU ref manual we can see the clock tree
+* we create a new project in MX cube for the NUCLEO board and go to Clock Configuration screen which is the same clock tree we see in ref manual but is configurable
+* HSI is coming tfrom internal HSI RC oscillator at 16MHz
+* HSE is going to IO pins (2) accepting a 4-26MHz crystal
+* we can use the PLL to increase the speed and us this as input
+* from UX the Clock is used to drive the SYSCLK.
+* from this we can set various bus clocks etc using divisors 
+* AHB bus clock (HCLK) uses a prescaler from the SYSCLK
+* from HCLK we get PCLK1 (APB1) and PCLK2 (APB2)
+
+### Lecture 49 - Exercise-Using HSI Clock and Clock Measurement:Part 1
+
+* MCU comes with internal HSI RC oscillator.
+* Also by default MCU uses HSI as source of SYSCLK
+* even if we use HSE or PLL after reset MCU will revert bakc to HSI
+* DISCO board has HSE. NUCLEO does not
+* crystal oscillator is more accurate and more stable than RC
+* RC freq drifts with temperature etc
+* if we dont use CubeMX we can cofigure clocks with registers
