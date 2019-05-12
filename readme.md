@@ -353,4 +353,30 @@ int main(void) {
 * DISCO board has HSE. NUCLEO does not
 * crystal oscillator is more accurate and more stable than RC
 * RC freq drifts with temperature etc
-* if we dont use CubeMX we can cofigure clocks with registers
+* if we dont use CubeMX we can configure clocks with registers to set the prescalers
+* we will use CubeMX to set HCLK at 8MHz
+* CubeMX => New Project => Select Board => Clock Config
+* By default is uses PLLCLK to upscale HSI RC
+* We set HCLK to 8 and CubeMX calculates the scales.
+* we select HSI in MUX se HCLK to 8 and scaler goes to /2
+* we want to measure and confirm the clock. in Clock Config bottom we see that MCU gives IO so that we can measure the clock. its grey because its not enabled. we go to pinout => RCC section => enable master clock output 1 and 2. RCC_MCO1 is in pin  PA8 and RCC_MCO2 in pin PC9 
+* MCO1 and 2 are now acticv in clock configuration. we use th mux to out put SYSCLK divided by 4
+* we generate sourcecode => Project Manager
+	* Project name : HCLK_measurement
+	* project folder : Desktop (MDK code gen has problem with deep folder)
+	* toolchain MDK-ARM V5
+	* code generator => select: copy only necessary library files
+	* generate code
+* we go to project location => open MDK-ARM folder and open the project
+* we build and flash the code
+
+### Lecture 50 - Exercise-Using HSI Clock and Clock Measurement:Part 2
+
+* We verify code with logic analyzer checking in pin C9
+* analyzer goes up to 8 MHz
+
+## Section 13 - Understanding MCU Peripheral Clock Control
+
+### Lecture 51 - Understanding MCU Peripheral Clock control
+
+* 
