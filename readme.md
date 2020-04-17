@@ -10,209 +10,126 @@
 * NUCLEO-F446RE from ST 
 * ST has good tools. and support.
 * check for on incircuit debugger
+* prefer e board from themdu vendor. pick a vensor with good tools and libs
 * check if Board supports the peripherals we are interested in 
 * check flash size and on board ram size. aim for >100KB
 
-### Lecture 5 - STM32F4 Discovery and Nucleo : Board Details
-
-* See EmbeddedProg Course (same lecture)
-
-### Lecture 6 - ST-Link Driver Installation
-
-* See EmbeddedProg Course (same lecture)
-
-### Lecture 7 - ST Link Firmware Upgrade
+### Lecture 5. STM32F4 Discovery and Nucleo : Board Details
 
 * See EmbeddedProg Course (same lecture)
 
 ## Section 3 - Hardware/Software Requirements
 
-### Lecture 8 - Hardware/Software Requirements
+### Lecture 6. Hardware/Software Requirements
 
 * check list in 'Hardware-software-used-in-MCU1'
 
-## Section 4 - OpenSTM32 System Workbench installation
+## Section 4 - Section 4: IDE installation
 
 * Same ad EmbeddedProgrammin Course
 
-## Section 5 - KEIL-MDK-5 Setup For ARM Cortex M based MCUs
+### Lecture 7. Downloading STM32CUBEIDE
 
-* Same ad EmbeddedProgrammin Course
+* we will use STMCubeIDE
+* download from ST
 
-## Section 6 - About the board
+### Lecture 8. Installation-Windows
 
-* Same ad EmbeddedProgrammin Course
+* install all drivers
 
-## Section 7 - LED/Button Exercises using BSPs
+### Lecture 10. Embedded Target
 
-### Lecture 2- Exercise: LED Toggling App using Board BSP APIs (Nucleo)
+* ST-Link drivers are installed with IDE
 
-* first we have allok at schematic to see where the LED is connected (Port A - pin 5)
-* we create a 'blinky' project
-* in manage project we add boardsupport (led) selecting our dev board from the list
-* add cubemx classic
-* Board support is added with a file for LED offering API methods
-* we import the header `#include "Board_LED.h"`
-* we initialize LEDs `LED_Initialize();` which sets the GPIO
-* we turn on the LED `LED_On(0);` passing in the index (we have only 1 in nucleo so 0)
-* to toggle we add a delay method
-* complete code
-```
-#include "Board_LED.h"
+### Lecture 11. Documents required
 
-void delay(void) {
-	uint32_t i = 0;
-	for(i=0;i<150000;i++);
-}
+* download MCU datasheet
+* download MCU ref manual
+* download Board user manual and schematic
 
-int main(void) {
-	LED_Initialize();
-	while(1){
-		LED_On(0);
-		delay();
-		LED_Off(0);
-		delay();
-	}
-	return 0;
-}
-```
+## Section 5: Creating a project using STM32CUBEIDE
 
-### Lecture 25 - Exercise : Adding button support using board BSP APIs(Nucleo)
+check the Embedded C course. its the same
 
-* in Keil MDK5 in Manage Run-Time Env we add boardsupport for buttons (NUCLEO)
-* we import 'Board_Buttons.h' to main.c
-* we add `Buttons_Initialize();`
-* in the while loop we check button state `Buttons_GetState()` if it is 1 (pushed) we toggle
-```
-	while(1){
-		if(Buttons_GetState()){
-			LED_On(0);
-			delay();
-			LED_Off(0);
-			delay();
-		} else {
-			LED_Off(0);
-		}
-	}
-```
-* according to schematic when button is not pressed the pin is driven High (VDD) if pressed Low (GND)
-* if we implemented an custom interrupt handler the it should trigger on falling edge
-* all this is taken care of the keil BSP
+## Section 6: Embedded Code Debugging Tips and tricks
 
-## Section 8 - LED/Button Exercises with OpenSTM32 SystemWorkbench
+### Lecture 16. Debugging options
 
-* Same ad EmbeddedProgrammin Course
+* Embeeded code Debugging options
+	* SWV (Serial Wire Viewer and data tracing (printf style debugging))
+	* Single stepping, steping over and stepping out
+	* Breakpoints (Inserting, deleting and skipping breakpoints)
+	* Disassembly
+	* Call stack
+	* Expression and variable windows
+	* Memory browser
+	* Data watch-points
+* SWV and ITM based printf style debugging
+	* introduces very minimal tim-space overhead
+	* ITM trace source of ARM Cortex M3/M4 proc supports printf style debugging to trace OS and application events and emits diagnostic info for the app captured by the host IDE to analyze behaviour when up is running
 
-## Section 9 - Embedded Code Debugging Tools n Tips
+### Lecture 17. Single stepping
 
-### Lecture 32 - Embedded Code Debugging Part-1
+* we create an STM32 project SWV enabled 
+* we cp the main.c code from course (buuble sort)
+* when we debug , we get debug perspective
+* step return = step out
 
-* most dev boards come with on board debugger
-* to start debugger we click the button on keil
-* in debug mode we have the source files with indication of where execution is
-* we also have dissasembly window
-* we use the butoon in menu to control the execution(reset, run, stepi in, step out, step ove)
+### Lecture 18. Disassembly and Register windows
 
-### Lecture 33 - Embedded Code Debugging Part-2: Break points
+* to see the disassembler: window => Show View => disassembly
+* instruction steping mode button for instruction single steping
+* in disassembly left column shows the address of the instruction. they resinde in FLASH memory. to see the opcode together with the mnemonic of an instruction RCLICK => show opcodes
+* to see the registers: Window => show view => registers
 
-* breakpoints halt the execution.
-* we can put breakpoin in source code or dissassembly instruction
+### Lecture 19. Breakpoints
 
-### Lecture 34 - Embedded Code Debugging Part-3: Step In/Step Over/Step Out
+* breakpoints are realized by HW address comparators that are there inside the processor debug unit. so the processor must support beakpoints to use them
+* the breakpoints we will use are called HW because they are realized by the HW unit of processor
+* there are also SW breakpoints realized through breakpoint instructions
+* being in debug mode Window => Show view => Breakpoints
+* max 6 breakpoints supported by HW unit
 
-* there are 3 buttons.
-* step in => enter the function (instr by instr execution)
-* step over => execute code without entering the method or assembly code
-* step out execute method and return www
-* using repetitevely breakpoints and step in i can do lin eby line debuggin
+### Lecture 20. Expression and variable windows
 
-### Lecture 35 - Embedded Code Debugging Part-4 : Disable/Kill all Bkpts.
+* in debug mode passing cursor over a var shows expression window
+* window => show view => variables window shows the variables window we can add vars to monitor. it gives the current functions stack frame
+* in expression window we can do operations on variables
 
-* if we forget where we have the breakpoints we can disable them all at once using the button. (we can reeanable them all by clicking again)
-* we can also reove them all at once with kill all button (in debug mode)
+### Lecture 21. Memory browser windows
 
-### Lecture 36 - Embedded Code Debugging Part-5: Call Stack Usage
+* mem window shows mem mapped content.
+window => show view => memory window 
+* we can select cell size and columns num of vars default is 4 words (32bit) per line
+* with RCLICK radix we can change mem content representation
 
-* Keil uvision in debug mode has the call stack window in bottom right
-* to show its wuse we implement 3 nested dummy functions (3 level deep)
-* in the internal method we try to jump to an address
-```
-void fun3(void) {
-	void (*jump_addr) (void) = 0x00000000;
-	jump_addr();
-}
-```
-* in the code above we have afunction pointer (a pointer holding the address of another function)
-* in our case that function takes no argument and returns nothing
-* the function pointer is initialized to an invalid address
-* by calling `jump_addr()` we dereference and jump to the address
-* in `void (*jump_addr1) (void) = &delay;` we point the function pointer to a valid address (the address of func 'delay')
-* we expect with the dereference of the invalid address to trap ourselfs in hard fault exception handler
-* as we go deepr in the subroutting nest we see the addresses of the functions we enter added in the call stack. when we enter fun3 the function pointer is added as well
-* even if i let the app run in debug mode and it halts we can press stop and see the last functions it visited in the call stacxk
-* in our case feafor eth efault handler we were in fun3. we even see the invlaid meme address
+### Lecture 22. Call stack and fault analyzers
 
-### Lecture 37 - Embedded Code Debugging Part-6: Watch Windows
+* if we set a function pointer to an empty memory location and try to call it, it raises illegal operation exception. we see the code trapped in an infinite loop
+* we can use the fault analyzer (Window => show as => fault analyzer)
 
-* in our debug sessions we many times want to watch the value of a variable
-* in keil: view => watch windows
-* then we enter the variable name and monitor its value (drag and drop them from code file to the wathc window)
+### Lecture 23. Data watch-points
 
-### Lecture 38 - Embedded Code Debugging Part-7: Memory Windows
+* we want to see where our var is assigned a new val
+* in break points => add watchpoint (add expression or read/read)
+* it is a conditional breakpoint
+* run code
 
-* mem window is in top right and has its  tab.
-* we can type in a mem address and see its contents
-* keil provides up to 4 em windows
-* we can get the mem map for base addresses from proc manual
-* eg get the base addr of flash mem and SRAM in our proc memmap
-	* FLASH 0x08000000
-	* SRAM1 0x20000000
-* mem window has raw mem content
-* flash has data (code static)
-* ram is empty not many runtime data
-* stack is in SRAM. it grows and shrincs as program is running
-* we can write in the memory in the mewindow
-* we can do direct write in mem from our program to see the mem window change `uint32_t *ram_pointer = 0x20000000` 
-* then get the hardcoded val from mem dereferencing the pointer `int value = *(ram_pointer);`
-* we get error as type has to be the same (int is 16bit uint32_t is 32bit) we need proper typecasting
-```
-uint32_t *ram_pointer = (uint32_t *) 0x20000000;
-int value = *(ram_pointer);
-```
-* the contents ox 0x20000000 wil lbe assigned to value
+### Lecture 24. SFR windows
 
-### Lecture 39 - Exercise-Copying data from Flash to RAM
+* SFRs (Special Function Registers) are for MCU peripherals
+* use window => show view => SFRs
+* we can even mod them and see results on board
 
-* we will copy data from FLASH to SRAM
-* we add a prject 'data_copy' and add boilerplate main()
-* we will put data in the flash memory. the easiest way is to add constant data.
-* data declared with keyword 'const' go to the flash memory and are read-only.
-* if i declare a string literal `char my_data[] = "I love embedded programming";` as global var it goes to RAM memory by default
-* in main we copy 1st byte to a local var
-```
-int main(void) {
-	
-	char data;
-	
-	data = my_data[0];
-	
-	return 0;
-}
-```
-* i go into debug mode and confirm that my_char array is stored in SRAM1 base address 0x20000000 and onwards (in mem window)
-* in mem window we can RCLICK and  show as ASCII to see the letters
-* we define as const char const my_data[] = "I love embedded programming"; and in debug mode we add it to watch .
-* we confirm that it resides in flash memory (0x0800037E)
-* we do the copy from FLASH TO RA in a for loop writing directly to mem address (we define it in a macro)
-```
-	for(int i=0;i<sizeof(my_data);i++) {
-		*((uint8_t *) BASE_ADDRESS_OF_SRAM+i) = my_data[i];
-	}
-```
+### Lecture 25. Other basic features of IDE
 
-## Section 10 - Understanding MCU Memory Map
+* terminate and rerun to shorten debug cycle
+* left ctrl + space = code suggestions
+* ctrl+o shows the methods of the source file
 
-### Lecture 40 - Understanding Memory Map of the MCU: Part 1
+## Section 7: Understanding MCU Memory Map
+
+### Lecture 26. Understanding Memory Map of the MCU: Part 1
 
 * Memory Bus of MCU (STM32F446XX)
 * ARM Cortex M4
@@ -226,17 +143,17 @@ int main(void) {
 * when the processor produces this address on the system bus (AHB1) it is actually referring to the GPIOA registers
 * we must understand tha MCU peripherals resinde in SoC but are processor external and communicate with the proc through the vaious System Buses
 
-### Lecture 41 - Understanding Memory Map of the MCU: Part 2
+### Lecture 27. Understanding Memory Map of the MCU: Part 2
 
 * we  dive into our MCUs datasheet (reference manual)
 * in our previous course we talked in depth on the Cortex M4 me map which is common for all devices using it
 * core feats like FLASH, SRAM , bitbanded areas are common
 * peripeherals vary per mcu family
 
-### Lecture 42 - Understanding Memory Map of the MCU: Part 3
+### Lecture 28. Understanding Memory Map of the MCU: Part 3
 
 * Questions to answer based on STM32F446XX Ref Manual:
-	* What's the base address of AHB1 Bus peripherals? 0x4002_0000
+	* What's the base address of AHB1 Bus peripherals? 0x4002_0000 start address, 0x4007 FFFF end address 
 	* What's the base address of GPIOA registers? 0x4002_0000
 	* What's the base address of RCC engine registers of the MCU? 0x4002_3800
 	* What's the base address of APB1 peripherals? 0x4000_0000
@@ -246,9 +163,9 @@ int main(void) {
 * we see that System Bus Mem regions contain their peripherals MCU specific registers
 * in the MCU header file we can use these addresses as Macros
 
-## Section 11 - MCU Bus Interfaces
+## Section 8: MCU Bus Interfaces
 
-### Lecture 43 - MCU Bus Interfaces Explanation Part 1: I-Code/D-Code/S-Bus
+### Lecture 29. MCU Bus Interfaces Explanation Part 1: I-Code/D-Code/S-Bus
 
 * we can havea top level look of the various buses in the MCU block diagram (Fig3) of [STM32F446 Datasheet](https://www.st.com/resource/en/datasheet/stm32f446re.pdf)
 * Some notes on this MCU bus interfaces:
@@ -276,7 +193,7 @@ int main(void) {
 	* D-Bus is used for data and debug access to Code mem space (0x0000_0000 to 0x1FFF_FFFF)
 	* S-Bus instruction fetch, data and debug access to addr range 0x2000_0000 to 0xDFFF_FFFF and 0xE010_0000 to 0xFFFF_FFFF
 
-### Lecture 44 - MCU Bus Interfaces Explanation Part 2: AHB/APB1/APB2
+### Lecture 30. MCU Bus Interfaces Explanation Part 2: AHB/APB1/APB2
 
 * if instructions are present in between mem locations 0x0000_0000 to 0x1FFF_FFFC the Cortex proc will fetch them using the ICode bus I/F
 * if instructions are present outside mem locations 0x0000_0000 to 0x1FFF_FFFC the Cortex proc will fetch them using the System bus I/F
@@ -292,7 +209,7 @@ int main(void) {
 	* APB1 max speed is 45MHz
 * GPIO ports hang under AHB1 so can run at full speed
 
-## Lecture 45 -  MCU Bus Interfaces Explanation Part 3: Q/A session
+## Lecture 31.  MCU Bus Interfaces Explanation Part 3: Q/A session
 
 * is it true that S-Bus is not connected to FLASH memory? yes (Figure 3 of MCU ref manual shows the FLASH mem controller)
 * proc can fetch instructions from SRAM over I-code bus? False
@@ -310,16 +227,16 @@ int main(void) {
 * USB OTG and GPIO can comm to proc simultaneously ? false (only 1 S-Bus)
 * Proc can talk to flash mem and SRAP simultaneously ? true (diff buses)
 
-### Lecture 46 - Understanding MCU Bus Matrix
+### Lecture 32. Understanding MCU Bus Matrix
 
 * to understand it we will use the Fig7 of [STM32 DMA controller App note](https://www.st.com/content/ccc/resource/technical/document/application_note/27/46/7c/ea/2d/91/40/a9/DM00046011.pdf/files/DM00046011.pdf/jcr:content/translations/en.DM00046011.pdf) for STM32F4-7  MCU. For STM32F446 we can look at Fig1 from STM32F446 TRM
 * horizontally we have bus masters and verticaly bus slaves
 * the bus matrix is a matrix that shows the connections of masters to slaves
 * we see the processor is the master of its 3 busses and how the peripherals are slaves to the S-Bus
 
-## Section 12 - Understanding MCU Clocks and Details
+## Section 9: Understanding MCU Clocks and Details
 
-### Lecture 47 - Understanding MCU Clocking System:Part1
+### Lecture 33. Understanding MCU Clocking System:Part1
 
 * three different sources can drive the system clock (SYSCLK)
 	* HSI oscillator clock
@@ -333,30 +250,88 @@ int main(void) {
 	* RC Oscilator: in the SoC (HSI high speed internal)
 	* THe PLL (Phase Locked Loop): in the SoC. generates higher frequency from low frequency
 
-### Lecture 48 - Understanding MCU Clocking System:Part2
+## Section 10: Understanding MCU Clock tree
+
+
+
+### Lecture 34. Understanding MCU clock sources and HSE
 
 * in MCU ref manual we can see the clock tree
-* we create a new project in MX cube for the NUCLEO board and go to Clock Configuration screen which is the same clock tree we see in ref manual but is configurable
-* HSI is coming tfrom internal HSI RC oscillator at 16MHz
-* HSE is going to IO pins (2) accepting a 4-26MHz crystal
-* we can use the PLL to increase the speed and us this as input
-* from UX the Clock is used to drive the SYSCLK.
-* from this we can set various bus clocks etc using divisors 
-* AHB bus clock (HCLK) uses a prescaler from the SYSCLK
-* from HCLK we get PCLK1 (APB1) and PCLK2 (APB2)
-
-### Lecture 49 - Exercise-Using HSI Clock and Clock Measurement:Part 1
-
-* MCU comes with internal HSI RC oscillator.
-* Also by default MCU uses HSI as source of SYSCLK
-* even if we use HSE or PLL after reset MCU will revert bakc to HSI
+* we create a new project for the NUCLEO board with target project type STM32Cube and do not do default config. this opens CubeMX
+* and go to Clock Configuration screen which is the same clock tree we see in ref manual but is configurable
+* HSE is going to IO pins (2) accepting a 4-26MHz crystal. NUCLEO has no external crystal. in ref manual it shows how to connect crystal. NUCLEO takes external 8MHz from STLINK and its crystal at pin PD0 (MCO)
+* we can use the PLL to increase the speed and use this as input
 * DISCO board has HSE. NUCLEO does not
 * crystal oscillator is more accurate and more stable than RC
-* RC freq drifts with temperature etc
+
+### Lecture 35. HSI and RCC registers
+
+* HSI is coming tfrom internal HSI RC oscillator at 16MHz
+* MCU comes with internal HSI RC oscillator.
+* Also by default MCU uses HSI as source of SYSCLK
+* even if we use HSE or PLL after reset MCU will revert back to HSI
+* from MUX the HSI Clock is used to drive the SYSCLK.
+* from this we can set various bus clocks etc using divisors 
+* we cannot select HSE in CubeMX clock config. to do so we need to
+	* go to pinout & configuration => system core => rcc => HSE clock source: Bypass (for Nucleo)
+	* now we can select HSE as source of SYSCLK
+* Sysclk is used as source for bus clocks
+	* AHB bus clock (HCLK) uses a prescaler from the SYSCLK
+	* from HCLK we get PCLK1 (APB1) and PCLK2 (APB2) and for peripherals
+	* also it clocks SysTick timer through prescaler
+	* also it clocks our processor clock FCLK
+* HSI RC freq drifts with temperature etc
 * if we dont use CubeMX we can configure clocks with registers to set the prescalers
-* we will use CubeMX to set HCLK at 8MHz
+* PLL is not used in this course. PLLCLK is used to upscale  using multiplier HSE or HSI. then it is used as source to SYSCLK
+* RCC registers are used to configure clock
+* I2S interface, USB,Ethernet needs PLL
+
+### Lecture 36. Peripheral clock configuration
+
+* we will see the RCC (Reset and Clock Control) engine of MCU
+* to work with peripherals on MCU we have to first enable their clocks
+* all peripherals drive clock from the bus they are connected to
+* without clock enabled peripherals are dead (no energy consumption)
+* RCC is a complete clock control engine allowing to enaable peripherals clocks
+* the clock configuration in STM32CubeMX is stored in RCC registers
+* we refer to the manual RCC reg section to say: enable ADC peripheral
+	* in ADC_CR1 we want to set 8bit = 1
+	* we create a new empty project 004PeriClockEnable
+* we define with macro the reg
+```
+#define ADC_BASE_ADDR 			0x40012000UL
+#define ADC_CR1_REG_OFFSET 		0x04
+#define ADC_CR1_REG_ADDR 		(ADC_BASE_ADDR + ADC_CR1_REG_OFFSET)
+```
+* we set 8th bit
+```
+uint32_t *pAdcCr1Reg = (uint32_t*) ADC_CR1_REG_ADDR;
+	*pAdcCr1Reg |= (1<<8);
+```
+* it has no effect when we run as clock is not enabled. we need to consult the manual and see on which bus it is connected (APB2) and see the reg. we set the macros to enable ADC1 clock and set it (this need to be done before)
+```
+#define RCC_BASE_ADDR			0x49923800UL
+#define RCC_APB2_ENR_OFFSET		0x44UL
+#define RCC_APB2_ENR_ADDR		(RCC_BASE_ADDR + RCC_APB2_ENR_OFFSET)
+	uint32_t *pRccApb2Enr = (uint32_t*) RCC_APB2_ENR_ADDR;
+	*pRccApb2Enr |= (1<<8);
+```
+
+### Lecture 37. Exercise : HSI measurements
+
+* we will write a program to output HSI clock on MCU pin and measure it using oscilloscope or logic analyzer
+* Steps to output a clock on MCU pin
+	* select the desired clock for the MCOx signal (MCU Clock Output)
+	* output the MCOx signal on the MCU pin
+* we start a STM32 project 004Clock with target project cube (no defaults)
 * CubeMX => New Project => Select Board => Clock Config
-* By default is uses PLLCLK to upscale HSI RC
+* there are 2 signals we can use to output the clock to pin MCO1 and MCO2
+* we see that HSI can be outputed only at MCO1 and it is disabled by default
+	* go to pinout => system core => RCC and enable MCO1 and MCO2
+* we need to route these signals to pins
+* we can divide the freq before outputing with CubeMX or RCC clock config register and config even source from reg (e.g. set MCO1 input to HSI (bit21:22 = 00))
+* to output to pin we need MCU pin details (in MCU datasheet) at pin description table => alternate function mapping (16 in total for each pin)
+
 * We set HCLK to 8 and CubeMX calculates the scales.
 * we select HSI in MUX se HCLK to 8 and scaler goes to /2
 * we want to measure and confirm the clock. in Clock Config bottom we see that MCU gives IO so that we can measure the clock. its grey because its not enabled. we go to pinout => RCC section => enable master clock output 1 and 2. RCC_MCO1 is in pin  PA8 and RCC_MCO2 in pin PC9 
@@ -369,14 +344,701 @@ int main(void) {
 	* generate code
 * we go to project location => open MDK-ARM folder and open the project
 * we build and flash the code
+	* MCO1 can be mapped to port PA8 with AF0 (alternate function 0)
+	* PA8 to physical map is in the pin and ball definition and is package dependent
+	* MCO2 can be mapped to port PC9 with AF0 (alternate function 0)
 
-### Lecture 50 - Exercise-Using HSI Clock and Clock Measurement:Part 2
+### Lecture 38. About USB logic analyzer
 
-* We verify code with logic analyzer checking in pin C9
-* analyzer goes up to 8 MHz
+* We have it we know it
 
-## Section 13 - Understanding MCU Peripheral Clock Control
+### Lecture 39. Code implementation
 
-### Lecture 51 - Understanding MCU Peripheral Clock control
+* we create a new STM32 Project without using CubeMX
+* first we need to set HSI as source for MCO1 (RCC_CFGR bit21:22)
+```
+#define RCC_BASE_ADDR              0x40023800UL
+#define RCC_CFGR_REG_OFFSET        0x08UL
+#define RCC_CFGR_REG_ADDR          (RCC_BASE_ADDR + RCC_CFGR_REG_OFFSET )
+uint32_t *pRccCfgrReg =  (uint32_t*) RCC_CFGR_REG_ADDR;
+//1. Configure the RCC_CFGR MCO1 bit fields to select HSI as clock source
+*pRccCfgrReg &= ~(0x3 << 21); //clear 21 and 22 bit positions
+```
+* we then have to config PA8 to behave as MCO1 (AF0 mode) but first we need to enable the peripheral clock of GPIOA peripheral
+```
+	 uint32_t *pRCCAhb1Enr = (uint32_t*)(RCC_BASE_ADDR + 0x30);
+	*pRCCAhb1Enr |= ( 1 << 0); //Enable GPIOA peripheral clock
+```
+* we then need to configure the PA8 mode in GPIAMODE reg as alternate function
+```
+#define GPIOA_BASE_ADDR			0x40020000UL
+	uint32_t *pGPIOAModeReg = (uint32_t*)(GPIOA_BASE_ADDR + 00);
+	*pGPIOAModeReg &= ~( 0x3 << 16); //clear
+	*pGPIOAModeReg |= ( 0x2 << 16);  //set
+```
+* we then set the alternate function high register for GPIOA 'GPIOA_AFRH' to select mode 0 for pin PA8
+```
+	uint32_t *pGPIOAAltFunHighReg = (uint32_t*)(GPIOA_BASE_ADDR + 0x24);
+	*pGPIOAAltFunHighReg &= ~( 0xf << 0);
+```
+* we run the code and connect the logic analyzer...
+* our logic analyzer cannot sample at 16Mhz
+* we need to divide the clock using a prescaler RCC CFG reg.
+```
+	//1.5 Configure MCO1 prescaler divide by 4
+	*pRccCfgrReg |= ( 1 << 25);
+	*pRccCfgrReg |= ( 1 << 26);
+```
+* we confirm the 4MHz clock rate in the logic analyzer
+
+### Lecture 40. Exercise : HSE measurements
+
+* To do measurement of HSE clock through MCO1 (Discovery Board)
+	* We need to enable the HSE clock using HSEON bit in RCC control register (RCC_CR)
+	* Wait until HSE clock from the external crystal stabilizes HSERDY bit in RCC_CR becomes 1 (only if crystal is connected) (indicates if the high-speed external oscillator is stable or not)
+	* Switch the systemclock to HSE (RCC_CFGR)
+	* Do MCO1 settings to measure it
+* To do measurement of HSE clock through MCO1 (NUCLEO Board)
+	* We need to enable the HSE clock using HSEBYP bit in RCC control register (RCC_CR), to bypass the oscillator with an external clock
+	* Enable the HSE clock using HSEON bit in (RCC_CR)
+	* Switch the systemclock to HSE (RCC_CFGR)
+	* Do MCO1 settings to measure it
+* the code
+```
+#define RCC_BASE_ADDR       	0x40023800UL
+#define RCC_CFGR_REG_OFFSET  	0x08UL
+#define RCC_CR_REG_OFFSET    	0x00UL
+#define RCC_CFGR_REG_ADDR     	(RCC_BASE_ADDR + RCC_CFGR_REG_OFFSET )
+#define RCC_CR_REG_ADDR      	(RCC_BASE_ADDR + RCC_CR_REG_OFFSET )
+#define GPIOA_BASE_ADDR			0x40020000UL
+
+int main(void)
+{
+	uint32_t *pRccCrReg = (uint32_t*)RCC_CR_REG_ADDR;
+	uint32_t *pRccCfgrReg = (uint32_t*)RCC_CFGR_REG_ADDR;
+	//1.Enable the HSE bybass using HSEBYP bit (RCC_CR)
+	*pRccCrReg |= ( 1 << 18);
+	//2.Enable the HSE clock using HSEON bit (RCC_CR)
+	*pRccCrReg |= ( 1 << 16);
+	//3. Switch the system clock to HSE (RCC_CFGR)
+	*pRccCfgrReg |= ( 1 << 0);
+	//4. Configure the RCC_CFGR MCO1 bit fields to select HSE as clock source
+	*pRccCfgrReg |= ( 1 << 22); //clear 21 and SET 22
+	//5. Configure MCO1 prescaler // divisor as 4
+	*pRccCfgrReg |= ( 1 << 25);
+	*pRccCfgrReg |= ( 1 << 26);
+	//6. Enable GPIOA peripheral clock in RCC AHB1 enable reg
+	 uint32_t *pRCCAhb1Enr = (uint32_t*)(RCC_BASE_ADDR + 0x30);
+	*pRCCAhb1Enr |= ( 1 << 0); //Enable GPIOA peripheral clock
+	//7. Configure the mode of GPIOA pin 8 as alternate function mode (0x02)
+	uint32_t *pGPIOAModeReg = (uint32_t*)(GPIOA_BASE_ADDR + 00);
+	*pGPIOAModeReg &= ~( 0x3 << 16); //clear
+	*pGPIOAModeReg |= ( 0x2 << 16);  //set
+	//8. Configure the alternation function register to set the mode 0 for PA8
+	uint32_t *pGPIOAAltFunHighReg = (uint32_t*)(GPIOA_BASE_ADDR + 0x24);
+	*pGPIOAAltFunHighReg &= ~( 0xf << 0);
+	for(;;);
+}
+```
+* we test with Logic Analyzer on pin PA8 and it works (2MHz)
+
+## Section 11: Understanding MCU Vector table
+
+### Lecture 41. Understanding MCU Vector Table: Part-1
+
+* a vector table is a table of ponters or addresses of the exception handlers
+* exceptions are: system exceptions + interrupts/external exceptions
+* ARM M4 core supports 15 sys exceptions + 240 interrupts (not all are implemented)
+* in the ref manual if the MCU we can see the table and the addresses
+	* position has to do with NVIC (fixed by ARM) = IRQnum
+	* priority has to do with interrupt preemption
+	* type of priority has to do if it is settable by programmer ir not
+	* lower priority num = higher priority
+	* address is the mem map address of the interrupt handler. they hold the function pointers of the handlers
+* the first address 0x00000000 holds the initialization value of the MSP stack pointer (address). it is OUR duty in the startup file to put a valid address in 0x0000000 for the MSP stack
+* handlers in asembly are set as weak so that we can override them
+* note that addresses are stored always +1 for the Tbit
+
+### Lecture 42. Understanding MCU Vector Table: Part-2
+
+* NVIC in ARM Cortex M4 takes care of Interupt priorities etc and sends one interrupt signal to CPU core
+
+## Section 12: Understanding MCU interrupt Design , NVIC, Interrupt handling
+
+### Lecture 43. Understanding MCU interrupt Design , NVIC, Interrupt handling: Part 1
+
+* we know that in NUCLEO board the User Button is connected to GPIO PortC bit 13
+* is pulled up. when we press button it goes to GRND
+* How GPIO pin interrupts the CPU??
+	* first the go to EXTI engine
+	* at external interrupt/event line mapping of EXTI engine for external interrupts which hangs on APB bus
+	* the engine connects to NVIC interupt controller. the engine sends 23 lines
+	* some peripherals (SPI) go directly to NVIC
+
+### Lecture 44. Understanding MCU interrupt Design , NVIC, Interrupt handling: Part 2
+
+* at external interrupt /event line mapping we see that PC13 goes to EXT13 mux together with the 13th pin of other ports.
+* in the diagram we see that its configured in SYSCFG_EXTICR4 reg at bits 4-7 where we need to write 0010: PC[x] pin to enable the PC port pin
+* this reg is for the MUX that produces the EXTI13 line. the cofig of the GPIO is another story
+* we can confirm it if we make a CubeMX project for the board and  check the generated code. to configure the pin in Cube MX:Pinout&Config=>SystemCore=>GPIO
+* at PC13 if we click we see the config options
+	* external interrupt mode falling edge (if we change to rising edge the interupt will trigger when we release the button). no need for pull up/down its done externally
+	* if we highlight the pin in CubeMX pinout display we see EXTI0 is configured... so we go to NVIC 
+	* in NVIC we have the option to enable EXTI
+	* in code geenration we are asked if we want a handler to be implemented for us
+	* as clock source we choose HSI
+* we generate code and view it
+	* we see the interrupt handlers. we build debug and put a breakpoint to the handler.. press the button. at release we see  the program entering the handler
+
+### Lecture 45. Understanding MCU interrupt Design , NVIC, Interrupt handling: Part 3
+
+* we see EXTI base address in mem-map 0x40013C00
+* we check EXTI_PR (offset 0x14)
+* while running the program we view the 0x40013C14 mem content and see the bit for 13 raised.
+* this tells us an interrupt is pending in line13
+* its our responsibility to clear the bit in the handler so a nre interrupt can be queued for execution. we need to write an 1 to clear. this is done in the HAL code
+
+### Lecture 46. Understanding MCU interrupt Design , NVIC, Interrupt handling: Part 4
+
+* each EXTI line is ORed with EXTI_PR bit for this line before going to NVIC
+* when we press button line and PR bit goes high. even if we release the button and line goes low PR bit is still high so NVIC still holds CPU to Handler mode
+* that why we need to clear the bit before exiting the handler
+* if we dont clear the CPU is stuck in the handler
+
+## Section 13: Importance of "Volatile" Keyword
+
+* we know this from embedded c course... 
+* volatile must always be used for pointers to mem map space to protect from compiler optimization especially when we use higher optimization options in compiler
+* volatile tells compiler that content is highly volatile in nature . it can change anytime. so it should not attempt any optimization but instead be aware that it is expected to read again and again from this memory
+* these are cases that initialize once update/read often
+* use volatile when you code is dealing with below scenarios
+	* Memory-mapped peripheral registers of the MCUs
+	* multiple tasks accessing global variables(read/write) in an RTOS multithreaded app
+	* when a global var is used to share data between the main code and an ISR code
+
+## Section 14: GPIO Must know concepts
+
+### Lecture 49. GPIO pin and GPIO port
+
+* GPIOs are used to
+	* Read digital signals
+	* issue interrupts
+	* generate triggers for external components
+	* wake up the processor
+* GPIO port is a collection of pins (8,16,32)
+
+### Lecture 50. GPIO behind the scene
+
+* In MCU the pin is implemented with an input buffer (CMOS transistor gate) and an output buffer (CMOS transistor gate) with enable line. 
+* their gates are opossite logic
+* the enable line is register controlled
+
+### Lecture 51. GPIO input mode with high impedance state
+
+* Hi impedance or hi-Z mode when pin is in input mode is when we keep the pin floating not connecting it to high or low level (pull up/down)
+* By default all GPIO pins are in High-Z mode
+* in that state pin can pickup circuit noise
+* also it can lead to current leakage
+
+### Lecture 52. GPIO input mode with pull-up/down state
+
+* floating state (High-Z) can be avoided by using internal or external pull up or down resistors
+* its safe to keep unused GPIOs in one of two states to avoid picking up noise from circuit and lead to current leakage
+
+### Lecture 53. GPIO output mode with open drain state
+
+* pin output mode with open drain config is nothing but the top PMOS transistor not present
+* when transistor is switched on, the output will be pulled LOW. when its off the drain will be open so the pin will be floating
+* open drain has only 2 states: GND or float. this is useledd unless we provide a pull up resistance internal or external
+* so OPEN DRAIN config has to be used WITH external or internal PULL UP
+* Usage of OPEN DRAIN config to drive a LED: 
+	* enable pull up
+	* wire the LED to the GND 
+	* when 1 is sent in NOT to 0 so transistor is off anf LED is high (ON)
+	* when 0 is sent => ... => LED is OFF
+* we can alternatively not use internal pull up and use an external one to VCC
+* even if we drive I2C both SDA and SCL are open drain by default.. so we need pull up resistors on both lines
+* prefer to use internal pull up/down res unless we have valid design ossued
+* CHECK DESIGN if internal pull ups/down can fit
+
+### Lecture 54. GPIO output mode with push pull state
+
+* output mode with push-pull config is the default when we set a pin to output ode. 
+* both CMOS (PMOS to VCC and NMOS to GND are used with reverse gates)
+* in this case we dont need neither pull up or down res
+	* top trans PMOS is ON / bottom trans NMOS is OFF when output drives HIGH
+	* the opposite for LOW
+* when we connect a LED to a push/pull output we need a limiting resistor to limit the current passing from the LED  and then to GND
+
+### Lecture 55. Optimizing I/O power consumption
+
+* in input pin when it is connected to VCC or GND there is no current leakage as the one CMOS is ON and the other OFF
+* when it is open (no connection) voltage of input  can fluctuate (0.5 - 0.2Vcc). it can turn on both CMOS so small amount of current will leak
+
+## Section 15: GPIO Programming structure and Registers
+
+### Lecture 56. GPIO programming structure
+
+* GPIO Registers stand between the Bus And the IO Port
+	* Port Direction (Mode) reg
+	* Port Speed Reg 
+	* Port output type Reg
+	* more ... config regs...
+	* Port output Data reg
+	* Port Input Data Reg
+
+### Lecture 57. Exploring GPIO PORT and pins of STM32F4xx Discovery board
+
+* The MCU of the Discovery board has 9 ports of 16 pins (144total) 80 pins available on the headers
+
+### Lecture 58. GPIO Mode register(used to set mode for a pin)
+
+* GPIO MODE REG in ref manual (GPIOx_MODER) at offset 0x00
+* 2 bits per pin config 00: input, 01: output mode, 10: alternate function, 11: analog
+* reset val is important for all registers
+
+### Lecture 59. Input configuration of a Microcontroller's GPIO Pin
+
+* some  pins cannot be used  for all purposes
+* when MCU pin is configured as input it can be configured to issue an interrupt to the processor
+* in GPIO general description we can see the full circuit of a GPIO pin
+* for every AHB1 bus cycle in input mode the pin status will be passed to the input data register passing from the the TTL schmidt trigger. output driver is open circuit
+* not using pull up or down will produce leakage and floating reads...
+* if we connect a switch to ground we need a pull up
+* for STM32F$ internal pull up and down is 40KOhn
+* When an IO pin os programmed in Input Mode
+	* the output buffer is disabled
+	* schmitt trigger input is activated
+	* pull up and pull down resistors are activated depending on the value in the GPIOx_PUPDR reg
+	* the data present on the I/O pin are sampled into the input data register every AHB1 clock cycle
+	* a read access to the input data reg provides the I/O state
+
+### Lecture 60. Output Configuration of a GPIO Pin in Push pull mode
+
+* 2 configs in output mode: open drain & push/pull
+* in push/pull in bothe states we have 1 or 0 (no floating,no high impedance)
+* in open drain 0 gives 0 (NMOS on => grounded), in 1 is floating
+* in open drain we have to activate the pull up resistor (when we give 1) but the intrnal pull up resistanc eis very high so the current will be small and LED wont light up. we need and external pull up (smaller say 1KOhm)
+	* in case 0 VCC will flow to ground through the NMOS (LED off)
+	* in case of 1 VCC will flow through LED to GND (LED On)
+* When we clearly want 2 states in output: use push/pull (default)
+* when we want high-Z state use open drain (e.g I2C)
+
+### Lecture 62. Input stage of a GPIO pin during output configuration
+
+* in output mode the TTL schmitt trigger (input buffer) will be ON 
+* so we can read the state of PIN while outputing
+
+### Lecture 63. Alternate functionality Configuration of a GPIO pin
+
+* Alternate Function Mode is all the Goodies in peripherals apart from GPIO
+* in AF mode input and output data registers are bypassed and signal is going to the other peripheral after passing the buffers
+
+### Lecture 64. GPIO out put type register explanation
+
+* when GPIO is in OutMode this register GPIOx_OTYPER selects the type (opendrain, push pull) 1bit per pin
+
+## Section 16: GPIO Registers : SPEED, PULL UP/DOWN, IDR and ODR
+
+### Lecture 65. GPIO output speed register and its applicability
+
+* GPIOxOSPEEDR reg is applicable only in Output Mode and configures the I/O output speed of transitioning from H to L (Tfall) and from L to H (Trise)
+ (slew rate). 
+* there are 4 options (2bit p/ pin) 00 (Low speed), 01 (Med Speed), 10 (High Speed), 11 (Very High Speed)
+* check the manual for exact time
+* Datasheet also the max possible frequency of rate and the times depending also per Vdd
+* a case that we might need it is to support bitbnging to I2C if our MCU does not support it
+
+### Lecture 66. GPIO Pull up and Pull down register
+
+* self explanatory. GPIOx_PUPDR 0x0C the address offset, 2bits per pin
+* options: 00: non pull up/down, 01: pull up, 10: pull down
+
+### Lecture 67. GPIO input data register
+
+* GPIOxIDR (offset 0x10) 1bit per pin. used to read the state of the input pin
+
+### Lecture 68. GPIO output data register and summary of various modes discussed
+
+* GPIOx_ODR (offset 0x14) 1bit per pin. used to control the state of out pin
+* GPIO Functional Summary (possible configs for a GPIO pin)
+	* Input floating
+	* Input pull-up
+	* Input pull-down
+	* Analog
+	* Output open drain with pull-up/down capability
+	* Output push-pull with pull up/down capability
+	* Alternate function push/pull with pull-up/down capability
+	* Alternate function open drain with pull-up/down capability
+
+## Section 17: GPIO Alternate functionality register and example of usage
+
+### Lecture 69. Alternate functionality settings of a GPIO pin with example : Part 1
+
+* up to 16 different Alternate Functionalities per pin (SPI,TIMER,UART,SPDIF,CAN,I2C,I2S)
+* We can see them to MCU Datasheet @ Alternate Function Mapping
+
+### Lecture 70. Alternate functionality settings of a GPIO pin with example : Part 2
+
+* GPIOxAFRL (offset 0x20) gpio altern function low register is used for pins 0-7 and GPIOxAFRH (offset 0x24) gpio altern function high register is used for pins 8-15
+* 4bits per pin to selct among 16 AF modes AF0-AF15
+
+## Section 18: GPIO peripheral clock control
+
+* to enable/disable thte GPIO peripheral clock:
+	* we know from architecture of MCU that GPIO ports hang under AHB1 bus
+	* so we need to set RCC_AHB1ENR registers GPIOx_EN bit for the GPIO port we want to enable
+* if we dont do it the port is dead to save power and we cannot do any config or operation
+
+## Section 19: GPIO driver development overview and Project creation
+
+### Lecture 73. GPIO driver development overview
+
+* High level Project Architecture:
+* in these 2 courses we will develop the Driver Layer 
+	* a source file & header file for each peripheral e.g `gpio_driver.h` + `gpio_driver.c` 
+	* MCU device header `STM32f446xx.h` 
+	* drivers stand on top of PHYSICAL layer and below Application
+	* Drivers expose driver APIs to app
+
+### Lecture 74. MCU Specific header file and its contents
+
+* Device Header File is a C header file containing MCU specific details such as:
+	* the base addresses of various memories present in MUC mem map (Flash,SRAM1,ROM etc)
+	* the base addresses of various bus domains such as (AHBx domain, APBx domain)
+	* base addresses of various peripherals of MCU
+	* clock mamangement macros (clock enable, clock diaable)
+	* IRQ definitions
+	* Peripheral Register definition structs
+	* Peripheral reg bit definitions
+	* other MCU config macros
+* used by both App and drivers
+
+### Lecture 75. New project creation and creating MCU specific headerfile
+
+* we create a new STM32 project in Workspace 'stm32f4xx_drivers' of empty project type
+* inc folder is for header files
+* click on project in tree and create new folder named 'drivers' and in it 2 folders 'inc' and 'src'
+* then RCLICK on 'drivers' folder => Properties => C/C++ build and uncheck exclude from build
+* in /inc we create a device header file 'stm32f446xx.h'
+
+### Lecture 76. Include path settings
+
+* we include the file in main.c but compile cannot find path
+* in project => properties => c/c++build => tool settings => MCU GCC Compiler => include paths we add the folder drivers/inc to the path . we rebuild
+
+## Section 20: Updating MCU specific header file with bus domain and peripheral details
+
+### Lecture 78. Writing base address C macros for MCU's embedded memories : Part 1
+
+* we start adding mem areas base addresses as macros in header file
+```
+#define FLASH_BASEADDR 		0x08000000U
+#define SRAM1_BASEADDR		0x20000000U
+#define SRAM2_BASEADDR		0x20001C00U
+#define	ROM					0x1FFF0000U		/* system memory */
+#define SRAM 				SRAM1_BASEADDR
+```
+* definitions by default are signed. mem addresses are unsigned. we should clearly cast to unsigned with U or using stdint.h uint32_t
+
+### Lecture 80. Defining base addresses of different bus domains
+
+* PERIPH_BASE is the bse for sifferent bus domains of STM32F4
+	* APB1PERIPH_BASE 0x40000000
+	* APB2PERIPH_BASE 0x40010000
+	* AHB1PERIPH_BASE 0x40020000
+	* AHB2PERIPH_BASE 0x50000000
+* different peripherals are hanging on different busses
+* AHB bus is used for those peripherals which need high speed data communication (e.g Camera if, GPIO)
+* APB bus is for peripherals that do not need high speed comm
+
+### Lecture 81. Defining base addresses of AHB1 Peripherals
+
+* we implement the memory map as we see it in ref manual
+* we will define only GPIO,SPI,I2C and UART peripherals of this course and also SYSCFG
+```
+#define GPIOA_BASEADDR			(AHB1PERIPH_BASEADDR + 0x0000)
+#define GPIOB_BASEADDR			(AHB1PERIPH_BASEADDR + 0x0400)
+#define GPIOC_BASEADDR			(AHB1PERIPH_BASEADDR + 0x0800)
+#define GPIOD_BASEADDR			(AHB1PERIPH_BASEADDR + 0x0C00)
+#define GPIOE_BASEADDR			(AHB1PERIPH_BASEADDR + 0x1000)
+#define GPIOF_BASEADDR			(AHB1PERIPH_BASEADDR + 0x1400)
+#define GPIOG_BASEADDR			(AHB1PERIPH_BASEADDR + 0x1800)
+#define GPIOH_BASEADDR			(AHB1PERIPH_BASEADDR + 0x1C00)
+#define GPIOI_BASEADDR			(AHB1PERIPH_BASEADDR + 0x2000)
+```
+
+### Lecture 82. Defining base addresses of APB1 and APB2 Peripherals
+
+* same thing
+* UART4 and 5 are not USART as they do not support synchronous comm
+* use CAPS for macros
+* HAL or DRV are prefixes used for HAL layer or DRV layer macros
+
+## Section 21: Structuring peripheral registers
+
+### Lecture 84. Address of peripheral registers
+
+* we determine and write macros for the addresses of various registers of a peripheral using offsets from its bse address using the MCU reference manual
+
+### Lecture 85. Structuring peripheral registers
+
+* it is very tedious to write macros for each and every register
+* we can use a C struct for a peripheral register set definition and then set its pointer to the peripheral address in mem space
+* structure elements act as placeholders for the registers
+```
+typedef struct {
+	volatile uint32_t MODER;			/*!< GPIO port mode register, Address Offset: 0x00 */
+	volatile uint32_t OTYPER;		/*!< GPIO port output type register,  Address Offset: 0x04 */
+	volatile uint32_t OSPEEDR;		/*!< GPIO port output speed register, Address Offset: 0x08 */
+	volatile uint32_t PUPDR;			/*!< GPIO port pull-up/pull-down register, Address Offset: 0x0C */
+	volatile uint32_t IDR;			/*!< GPIO port input data register, Address Offset: 0x10 */
+	volatile uint32_t ODR;			/*!< GPIO port output data register, Address Offset: 0x14 */
+	volatile uint32_t BSRR;			/*!< GPIO port bit set/reset register, Address Offset: 0x18 */
+	volatile uint32_t LCKR;			/*!< GPIO port configuration lock register, Address Offset: 0x1C */
+	volatile uint32_t AFR[2];		/*!<GPIO alternate function Address Offset Registers: 0x20-0x24 */
+} GPIO_RegDef_t;
+```
+
+* then we have to map a pointer to the base addr `GPIO_RegDef_t *pGPIOA = (GPIO_RegDef_t*) GPIOA_BASEADDR;`
+* and we can access reg as `pGPIOA->MODER`
+* to build the structs go directly to the Periperal Register Map in Ref Manual
+* use volatile as regs are highly volatile
+
+### Lecture 86. Peripheral definition macros
+
+* we ll define another macro for the pointers `#define GPIOA   	((GPIO_RegDef_t*)GPIOA_BASEADDR)`
+
+
+## Section 22: Writing Clock enable and disable macros
+
+### Lecture 87. Writing peripheral clock enable and disable C Macros
+
+* we add a struct def for RCC regs and we add macros to enable clock for GPIOx peripherals `#define GPIOA_PCLK_EN()	(RCC->AHB1ENR |= (1<<0))` etc
+* we do the same for other peripherals SPI, I2C etc
+* we write clock disable macros `#define GPIOA_PCLK_DIS()	(RCC->AHB1ENR &= ~(1<<0))`
+
+### Lecture 88. Project include settings and build
+
+* rebuild the project
+
+## Section 23: GPIO driver API requirements and handle structure
+
+### Lecture 89. Creating GPIO driver header and source file
+
+* in drivers/src we add 'stp32f446xx_gpio_driver.c' file
+* in drivers/inc we add 'stp32f446xx_gpio_driver.h' file
+* include the device header in gpio header file
+* include the h in c
+
+### Lecture 90. Defining GPIO handle and configuration structure
+
+* For a User Application we need to configure
+	* GPIO port name
+	* GPIO pin number
+	* GPIO mode
+	* GPIO speed
+	* GPIO outputtype
+	* GPIO pullup/don
+	* GPIO Alt. Function mode
+* we have to offer APIs for al these and a config structure to confgi the above
+* the struct will be passed to the API
+* we will config 2 structures.
+	* GPIO Handle
+	* Config Struct
+```
+typedef struct {
+	uint8_t	GPIO_PinNumber;
+	uint8_t	GPIO_PinMode;
+	uint8_t	GPIO_PinSpeed;
+	uint8_t	GPIO_PinPuPdControl;
+	uint8_t	GPIO_PinOPType;
+	uint8_t	GPIO_PinAltFunMode;
+}GPIO_PinConfig_t;
+
+/*
+ * this is a handle structure for a GPIO pin
+ */
+
+typedef struct {
+	GPIO_RegDef_t		*pGPIOx;		/*!< This holds the base address of the GPIO to which the pin belongs >*/
+	GPIO_PinConfig_t	GPIO_PinConfig; /*!< This holds GPIO pin condifguration settings >*/
+}GPIO_Handle_t;
+```
+
+### Lecture 91. Driver API requirements and adding API prototypes
+
+* A GPIO driver should give the following APIs to the App
+	* GPIO Initialization
+	* Enable/Disable GPIO port clock
+	* Read from a GPIO pin
+	* Write to a GPIO pin
+	* Config Alternate Functionality
+	* Interrupt Handling
+* we add boilerplate function stubs for all these
+
+### Lecture 92. Driver API input parameters and return types
+
+* For peripheral clock control we need the GPIO port base address and a flag for enable or disable `void GPIO_PeriClockControl(GPIO_RegDef_t *pGPIOx, uint8_t EnorDi);`
+* the base adress is needed purely to know which port wea re dealing with
+* for init pass the handler `void GPIO_Init(GPIO_Handle_t *pGPIOHandle);`
+* for deinit we pass the base addr again to know which port it is`void GPIO_DeInit(GPIO_RegDef_t *pGPIOx);` deinit is done through RCC_AHB1RST reseting a bit we clear all regs
+* read write api stubs are in the same philosophy
+```
+uint8_t GPIO_ReadFromInputPin(GPIO_RegDef_t *pGPIOx,uint8_t PinNumber);
+uint16_t GPIO_ReadFromInputPort(GPIO_RegDef_t *pGPIOx);
+void GPIO_WriteToOutputPin(GPIO_RegDef_t *pGPIOx,uint8_t PinNumber,uint8_t value);
+void GPIO_WriteToOutputPort(GPIO_RegDef_t *pGPIOx,uint16_t value);
+void GPIO_TogglePin(GPIO_RegDef_t *pGPIOx,uint8_t PinNumber);
+```
+
+* the stubs for IRQ are IRQ specific
+```
+void GPIO_IRQConfig(uint8_t IRQNumber,uint8_t IRQPriority, uint8_t EnorDi);
+void GPIO_IRQHandling(uint8_t PinNumber);
+```
+
+### Lecture 93. Driver empty API implementation and documentation
+
+* we ll start fleshing out the prototypes in .c driver file
+* we cp the stubs make them functions and add comment descripitons
+
+## Section 24: GPIO driver API Implementation : Clock control
+
+### Lecture 94. Implementation of GPIO peripheral clock control API
+
+* we need to enable or disable the clock for a port based on the base address (which GPIO) and the flag. the logic is simple
+```
+void GPIO_PeriClockControl(GPIO_RegDef_t *pGPIOx, uint8_t EnorDi){
+	if(EnorDi == ENABLE) {
+		if(pGPIOx == GPIOA) {
+			GPIOA_PCLK_EN();
+		}
+	} else {
+		
+	}
+}
+```
+
+## Section 25: GPIO driver API Implementation : GPIO init and de-init
+
+### Lecture 95. Writing user configurable macros
+
+* initialization will be done based on the params passed in the config struct
+	1. configure mode of gpio pin
+	2. configure the speed
+	3. configure the pupd settings
+	4. configure the optype
+	5. configure the alt func
+* we need macros for all the options in the h file ....
+* for pin mode we add also the interrupt types
+
+### Lecture 96. Implementation of GPIO init AP
+
+* we wont code for interupt modes in init
+*  we should only touch the bits for the pin we want to config and leave the rest of the register untouched (clear the affected bits then set them)
+* the pattern to set the registers using the config option that will be used extensively is
+```
+		uint32_t temp = 0;
+		// the non interrupt mode
+		temp = (pGPIOHandle->GPIO_PinConfig.GPIO_PinMode << (2*pGPIOHandle->GPIO_PinConfig.GPIO_PinNumber));
+		pGPIOHandle->pGPIOx->MODER &= ~(0x3 << pGPIOHandle->GPIO_PinConfig.GPIO_PinNumber); //clear bits
+		pGPIOHandle->pGPIOx->MODER |= temp;
+		temp = 0;
+```
+
+### Lecture 98. Configuring Alternate function registers
+
+* AFR[0] is AFRlow  (pin0-7) and AFR[1] is AFRhigh (pin8-15)
+* we divide pinNum by 8 to decide which reg to affect
+* we also need the modulo for bit shifting
+```
+uint8_t temp1,temp2;	
+		temp1 = pGPIOHandle->GPIO_PinConfig.GPIO_PinNumber / 8;
+		temp2 = pGPIOHandle->GPIO_PinConfig.GPIO_PinNumber % 8;
+		pGPIOHandle->pGPIOx->AFR[temp1] &= ~(0xF << temp2); //clear bits
+		pGPIOHandle->pGPIOx->AFR[temp1] |= (pGPIOHandle->GPIO_PinConfig.GPIO_PinAltFunMode << (4* temp2));
+```
+
+### Lecture 99. GPIO de-init API implementation
+
+* we need to reset all the registers for deinit
+* this is done by seting the respective bit of RCC_AHB1RSTR and then reseting it
+* we use the code of ClockControl changing the Reg
+* we need to create the `GPIOx_REG_RST();` macros
+* for GPIOA its `#define GPIOA_REG_RST() 	do{(RCC->AHB1RSTR |= (1<<0));	(RCC->AHB1RSTR &= ~(1<<0));}while(0)`
+* the way to implement macros with multiple statements is #define MACRO() do{statement1; .. ; statementX;}while(0)
+
+## Section 26: GPIO driver API Implementation : GPIO data read and write
+
+### Lecture 100. Implementation of GPIO input port read and input pin read APIs
+
+* we extract the bit from IDR reg in read bit shifting to 0 to make an uint8_t to return
+```
+uint8_t GPIO_ReadFromInputPin(GPIO_RegDef_t *pGPIOx,uint8_t PinNumber){
+	uint8_t value;
+	value = (uint8_t)((pGPIOx->IDR >> PinNumber) & 0x00000001); 
+	return value;
+}
+```
+
+### Lecture 101. Implementation of GPIO output port write and output pin write APIs
+
+* easy set / reset bit
+```
+void GPIO_WriteToOutputPin(GPIO_RegDef_t *pGPIOx,uint8_t PinNumber,uint8_t Value){
+	if(Value == GPIO_PIN_SET) {
+		// write 1 to the REG at respective bit
+		pGPIOx->ODR |= (1 << PinNumber);
+	} else {
+		// write 1 to the REG at respective bit
+		pGPIOx->ODR &= ~(1 << PinNumber);
+	}
+}
+```
+
+### Lecture 102. Implementation of GPIO pin toggle API
+
+```
+void GPIO_TogglePin(GPIO_RegDef_t *pGPIOx,uint8_t PinNumber){
+	pGPIOx->ODR ^= (1 << PinNumber);
+}
+```
+
+## Section 27: Exercise
+
+### Lecture 103. Exercise : LED toggling with PUSH PULL configuration
+
+* Write a program to toggle the on board LED with some delay
+	* 1. use push pull config for output pin
+	* 2. use open drain config for output pin
+* In Nucleo LED is in A5 and it has resistor
+* we delete main.c
+* we add a 001led_toggle.c in /src
+* we import device header
+* in device header end we include the driver header
+* the code is straightforward.  set the config struct then call the api to init and toggle
+```
+int main(void) {
+
+	GPIO_Handle_t GpioLed;
+	GpioLed.pGPIOx = GPIOA;
+	GpioLed.GPIO_PinConfig.GPIO_PinNumber = GPIO_PIN_NO_5;
+	GpioLed.GPIO_PinConfig.GPIO_PinMode = GPIO_MODE_OUT;
+	GpioLed.GPIO_PinConfig.GPIO_PinSpeed = GPIO_SPEED_FAST;
+	GpioLed.GPIO_PinConfig.GPIO_PinOPType = GPIO_OP_TYPE_PP;
+	GpioLed.GPIO_PinConfig.GPIO_PinPuPdControl = GPIO_NO_PUPD;
+	GPIO_PeriClockControl(GPIOA, ENABLE);
+	GPIO_Init(&GpioLed);
+
+	while(1){
+		GPIO_TogglePin(GPIOA, GPIO_PIN_NO_5);
+		delay();
+	}
+	return 0;
+}
+```
+
+### Lecture 104. Exercise : LED toggling with OPEN DRAIN configuration
 
 * 

@@ -94,7 +94,7 @@ void GPIO_Init(GPIO_Handle_t *pGPIOHandle)
 	{
 		//the non interrupt mode
 		temp = (pGPIOHandle->GPIO_PinConfig.GPIO_PinMode << (2 * pGPIOHandle->GPIO_PinConfig.GPIO_PinNumber ) );
-		pGPIOHandle->pGPIOx->MODER &= ~( 0x3 << pGPIOHandle->GPIO_PinConfig.GPIO_PinNumber); //clearing
+		pGPIOHandle->pGPIOx->MODER &= ~( 0x3 << (2 * pGPIOHandle->GPIO_PinConfig.GPIO_PinNumber)); //clearing
 		pGPIOHandle->pGPIOx->MODER |= temp; //setting
 
 	}else
@@ -137,14 +137,14 @@ void GPIO_Init(GPIO_Handle_t *pGPIOHandle)
 
 	//2. configure the speed
 	temp = (pGPIOHandle->GPIO_PinConfig.GPIO_PinSpeed << ( 2 * pGPIOHandle->GPIO_PinConfig.GPIO_PinNumber) );
-	pGPIOHandle->pGPIOx->OSPEEDR &= ~( 0x3 << pGPIOHandle->GPIO_PinConfig.GPIO_PinNumber); //clearing
+	pGPIOHandle->pGPIOx->OSPEEDR &= ~( 0x3 << ( 2 * pGPIOHandle->GPIO_PinConfig.GPIO_PinNumber)); //clearing
 	pGPIOHandle->pGPIOx->OSPEEDR |= temp;
 
 	temp = 0;
 
 	//3. configure the pupd settings
 	temp = (pGPIOHandle->GPIO_PinConfig.GPIO_PinPuPdControl << ( 2 * pGPIOHandle->GPIO_PinConfig.GPIO_PinNumber) );
-	pGPIOHandle->pGPIOx->PUPDR &= ~( 0x3 << pGPIOHandle->GPIO_PinConfig.GPIO_PinNumber); //clearing
+	pGPIOHandle->pGPIOx->PUPDR &= ~( 0x3 << ( 2 * pGPIOHandle->GPIO_PinConfig.GPIO_PinNumber)); //clearing
 	pGPIOHandle->pGPIOx->PUPDR |= temp;
 
 	temp = 0;
@@ -370,7 +370,7 @@ void GPIO_IRQInterruptConfig(uint8_t IRQNumber, uint8_t EnorDi)
 		else if(IRQNumber >= 64 && IRQNumber < 96 )
 		{
 			//program ISER2 register //64 to 95
-			*NVIC_ISER3 |= ( 1 << (IRQNumber % 64) );
+			*NVIC_ISER2 |= ( 1 << (IRQNumber % 64) );
 		}
 	}else
 	{
@@ -383,10 +383,10 @@ void GPIO_IRQInterruptConfig(uint8_t IRQNumber, uint8_t EnorDi)
 			//program ICER1 register
 			*NVIC_ICER1 |= ( 1 << (IRQNumber % 32) );
 		}
-		else if(IRQNumber >= 6 && IRQNumber < 96 )
+		else if(IRQNumber >= 64 && IRQNumber < 96 )
 		{
 			//program ICER2 register
-			*NVIC_ICER3 |= ( 1 << (IRQNumber % 64) );
+			*NVIC_ICER2 |= ( 1 << (IRQNumber % 64) );
 		}
 	}
 

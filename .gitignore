@@ -1,157 +1,55 @@
-# A .gitignore for Keil projects.
-# Taken mostly from http://www.keil.com/support/man/docs/uv4/uv4_b_filetypes.htm
-
-# User-specific uVision files
-*.opt
-*.uvopt
-*.uvoptx
-*.uvgui
-*.uvgui.*
-*.uvguix.*
-
-# Listing files
-*.cod
-*.htm
-*.i
-*.lst
-*.map
-*.m51
-*.m66
-# define exception below if needed
-*.scr
-
-# Object and HEX files
-*.axf
-*.b[0-3][0-9]
-*.hex
+# Prerequisites
 *.d
-*.crf
-*.elf
-*.hex
-*.h86
-*.lib
-*.obj
+
+# Object files
 *.o
-*.sbr
+*.ko
+*.obj
+*.elf
 
-# Build files
-# define exception below if needed
-*.bat
-*._ia
-*.__i
-*._ii
+# Linker output
+*.ilk
+*.map
+*.exp
 
-# Generated output files
-/Listings/*
-/Objects/*
+# Precompiled Headers
+*.gch
+*.pch
 
-# Debugger files
-# define exception below if needed
-*.ini
+# Libraries
+*.lib
+*.a
+*.la
+*.lo
 
-# Other files
-*.build_log.htm
-*.cdb
-*.dep
-*.ic
-*.lin
-*.lnp
-*.orc
-# define exception below if needed
-*.pack
-# define exception below if needed
-*.pdsc
-*.plg
-# define exception below if needed
-*.sct
-*.sfd
-*.sfr
+# Shared objects (inc. Windows DLLs)
+*.dll
+*.so
+*.so.*
+*.dylib
 
-# Miscellaneous
-*.tra
-*.bin
-*.fed
-*.l1p
-*.l2p
-*.iex
+# Executables
+*.exe
+*.out
+*.app
+*.i*86
+*.x86_64
+*.hex
 
-# To explicitly override the above, define any exceptions here; e.g.:
-# !my_customized_scatter_file.sct
+# Debug files
+*.dSYM/
+*.su
+*.idb
+*.pdb
 
-##########################################
-####### OPENSTM32 Sys Workbench (Eclipse)
-##########################################
+# Kernel Module Compile Results
+*.mod*
+*.cmd
+.tmp_versions/
+modules.order
+Module.symvers
+Mkfile.old
+dkms.conf
 
-# Created by https://www.gitignore.io/api/eclipse
-# Edit at https://www.gitignore.io/?templates=eclipse
-
-### Eclipse ###
-.metadata
-bin/
-tmp/
-*.tmp
-*.bak
-*.swp
-*~.nib
-local.properties
-.settings/
-.loadpath
-.recommenders
-
-# External tool builders
-.externalToolBuilders/
-
-# Locally stored "Eclipse launch configurations"
-*.launch
-
-# PyDev specific (Python IDE for Eclipse)
-*.pydevproject
-
-# CDT-specific (C/C++ Development Tooling)
-.cproject
-
-# CDT- autotools
-.autotools
-
-# Java annotation processor (APT)
-.factorypath
-
-# PDT-specific (PHP Development Tools)
-.buildpath
-
-# sbteclipse plugin
-.target
-
-# Tern plugin
-.tern-project
-
-# TeXlipse plugin
-.texlipse
-
-# STS (Spring Tool Suite)
-.springBeans
-
-# Code Recommenders
-.recommenders/
-
-# Annotation Processing
-.apt_generated/
-
-# Scala IDE specific (Scala & Java development for Eclipse)
-.cache-main
-.scala_dependencies
-.worksheet
-
-### Eclipse Patch ###
-# Eclipse Core
-.project
-
-# JDT-specific (Eclipse Java Development Tools)
-.classpath
-
-# Annotation Processing
-.apt_generated
-
-.sts4-cache/
-
-# End of https://www.gitignore.io/api/eclipse
+# PDF files
+*.pdf

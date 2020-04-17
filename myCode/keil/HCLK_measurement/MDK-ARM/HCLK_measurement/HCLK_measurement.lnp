@@ -1,0 +1,26 @@
+--cpu=Cortex-M4.fp
+"hclk_measurement\startup_stm32f446xx.o"
+"hclk_measurement\main.o"
+"hclk_measurement\stm32f4xx_it.o"
+"hclk_measurement\stm32f4xx_hal_msp.o"
+"hclk_measurement\stm32f4xx_hal_tim.o"
+"hclk_measurement\stm32f4xx_hal_tim_ex.o"
+"hclk_measurement\stm32f4xx_hal_uart.o"
+"hclk_measurement\stm32f4xx_hal_rcc.o"
+"hclk_measurement\stm32f4xx_hal_rcc_ex.o"
+"hclk_measurement\stm32f4xx_hal_flash.o"
+"hclk_measurement\stm32f4xx_hal_flash_ex.o"
+"hclk_measurement\stm32f4xx_hal_flash_ramfunc.o"
+"hclk_measurement\stm32f4xx_hal_gpio.o"
+"hclk_measurement\stm32f4xx_hal_dma_ex.o"
+"hclk_measurement\stm32f4xx_hal_dma.o"
+"hclk_measurement\stm32f4xx_hal_pwr.o"
+"hclk_measurement\stm32f4xx_hal_pwr_ex.o"
+"hclk_measurement\stm32f4xx_hal_cortex.o"
+"hclk_measurement\stm32f4xx_hal.o"
+"hclk_measurement\stm32f4xx_hal_exti.o"
+"hclk_measurement\system_stm32f4xx.o"
+--library_type=microlib --strict --scatter "HCLK_measurement\HCLK_measurement.sct"
+--summary_stderr --info summarysizes --map --load_addr_map_info --xref --callgraph --symbols
+--info sizes --info totals --info unused --info veneers
+--list "HCLK_measurement.map" -o HCLK_measurement\HCLK_measurement.axf
