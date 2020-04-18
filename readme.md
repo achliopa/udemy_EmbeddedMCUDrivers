@@ -1041,4 +1041,269 @@ int main(void) {
 
 ### Lecture 104. Exercise : LED toggling with OPEN DRAIN configuration
 
-* 
+* we do 2 changes and rerun
+```
+	GpioLed.GPIO_PinConfig.GPIO_PinOPType = GPIO_OP_TYPE_OD;
+	GpioLed.GPIO_PinConfig.GPIO_PinPuPdControl = GPIO_PIN_PU;
+```
+
+* but we see a fading light because internal pull up is high ohm
+* if we remove internal pull up we see no lght as the external resistor is not pull up
+* to be able to drive the LED in opendrain we need an external pull up with smaller resistance (e.g 320ohm )
+
+### Lecture 105. Exercise : Handling on board LED and Button
+
+* Exercise: togle LED whenever the button is pressed (PC13) pressed is LOW, released is HIGH
+* create a new file 002led_button.c and exclude from build the 001 file
+* cp the code
+* we create a new GPIO_Handle_t and config for input
+```
+/* Button config */
+	GpioBtn.pGPIOx = GPIOC;
+	GpioBtn.GPIO_PinConfig.GPIO_PinNumber = GPIO_PIN_NO_13;
+	GpioBtn.GPIO_PinConfig.GPIO_PinMode = GPIO_MODE_IN;
+	GpioBtn.GPIO_PinConfig.GPIO_PinSpeed = GPIO_SPEED_FAST;
+	GpioBtn.GPIO_PinConfig.GPIO_PinPuPdControl = GPIO_NO_PUPD;
+	GPIO_PeriClockControl(GPIOC, ENABLE);
+	GPIO_Init(&GpioBtn);
+```
+* we use `GPIO_ReadFromInputPin(GPIOC, GPIO_PIN_NO_13)` to probe the input
+* we need delay for button debouncing
+* in pushbuttons we have 4 pins. A-D are connected and B-C. when we push A-B-C-D are connected
+
+### Lecture 106. Exercise : Connecting external button and circuit explanation
+
+* use 2 free GPIOs for an external button and LED and conect them from breadboard to test
+* use 22kohm pull up for ush button
+* straigth leg of led is cathode to ground
+* in anode use current limitign resistor e.g 500ohm
+* go to [Tinkercad](tinkercad.com) to simulate the breadboard before wiring
+
+## Section 28: GPIO pin Interrupt configuration
+
+### Lecture 109. GPIO pin Interrupt configuration coding : Part 1
+
+* we will implement init of 3 interrupt modes.. Fallinng Edge , Rising Edge and Both
+* The Pins Interrupt Delivery to CPU in STM32F$ is
+	* GPIO port is decided by SYSCFG_EXTICR register configuration (GPIOx_PIN0 ... GPIOx_PIN10_15)
+	* upt to pin 4 there is dedicated bit config reg 4-9 share 1 bit also 10-15
+	EXTI block does edge detection (FT,RT), enable and disable of interrupt delivery top proc
+	* EXTTI0,EXTI1,EXTI2,EXTI3,EXTI4,EXTI5-9,EXTI!)-15 go to NVIC on their own IRQ num
+	* NVIC does Enable/Disable of IRQs with NVIC regs
+* GPIO Pin Interrupt Configuration
+	* Pin must be in input configuration
+	* Configure the edge trigger (RT,FT,RFT)
+	* Eanble interrupt delivery from peripheral to processor (on peripheral side)
+	* Identify the IRQ number on which the processor accepts the interrupt from that pin
+	* Configure the IRQ priority for the identified IRQ number (Proc side)
+	* Enable interrupt reception on that IRQ number (Proc side)
+	* Implement IRQ handler
+
+### Lecture 110. GPIO pin Interrupt configuration coding : Part 2
+
+* we need to define the EXTI peripheral definition as stuct
+```
+/*
+ * peripheral register definition structure for EXTI
+ */
+typedef struct
+{
+	__vo uint32_t IMR;    /*!< Give a short description,          	  	    Address offset: 0x00 */
+	__vo uint32_t EMR;    /*!< TODO,                						Address offset: 0x04 */
+	__vo uint32_t RTSR;   /*!< TODO,  									     Address offset: 0x08 */
+	__vo uint32_t FTSR;   /*!< TODO, 										Address offset: 0x0C */
+	__vo uint32_t SWIER;  /*!< TODO,  									   Address offset: 0x10 */
+	__vo uint32_t PR;     /*!< TODO,                   					   Address offset: 0x14 */
+
+}EXTI_RegDef_t;
+```
+
+* base addr we have already set
+* we config edge trigger `#define EXTI		((EXTI_RegDef_t*) EXTI_BASEADDR)`
+* to set SYSCFG registers we need the structure like EXTI
+```
+/*
+ * peripheral register definition structure for SYSCFG
+ */
+typedef struct
+{
+	__vo uint32_t MEMRMP;       /*!< Give a short description,                    Address offset: 0x00      */
+	__vo uint32_t PMC;          /*!< TODO,     									  Address offset: 0x04      */
+	__vo uint32_t EXTICR[4];    /*!< TODO , 									  Address offset: 0x08-0x14 */
+	uint32_t      RESERVED1[2];  /*!< TODO          							  Reserved, 0x18-0x1C    	*/
+	__vo uint32_t CMPCR;        /*!< TODO         								  Address offset: 0x20      */
+	uint32_t      RESERVED2[2];  /*!<                                             Reserved, 0x24-0x28 	    */
+	__vo uint32_t CFGR;         /*!< TODO                                         Address offset: 0x2C   	*/
+} SYSCFG_RegDef_t;
+```
+
+* base address we have we add a pointer macro `#define SYSCFG		((SYSCFG_RegDef_t*) SYSCFG_BASEADDR)`
+
+### Lecture 112. GPIO pin Interrupt configuration coding : Part 4
+
+* we see that there are 4 registers . with 4 bits  per pin it gives up to 15 ports to enable
+* so we can use at any moment an interupt on a pin number of a given port. we cannot fire interapt from the same pin num on another port (for GPIO peripherals)
+	* 0000 for PortA -> 0111 for port H (in STM32F446)
+* so we need the pin num and port base address to now port and pin to set the correct bits
+* we will play with div and modulo
+* we will add a macro to get the port bit mask based on portnum
+```
+#define GPIO_BASEADDR_TO_CODE(x)	((x == GPIOA) ? 0 :\
+									 (x == GPIOB) ? 1 :\
+									 (x == GPIOC) ? 2 :\
+									 (x == GPIOD) ? 3 :\
+									 (x == GPIOE) ? 4 :\
+									 (x == GPIOF) ? 5 :\
+									 (x == GPIOG) ? 6 :\
+									 (x == GPIOH) ? 7)
+```
+* macro is interesting as it takes argument and also it makes heavy use of ternary conditions
+* we also need to enable syscfg clock
+* and enable IMR bit
+```
+		// 2. config the GPIO port selection in SYSCFG_EXTICR
+		uint8_t temp1 = pGPIOHandle->GPIO_PinConfig.GPIO_PinNumber / 4;
+		uint8_t temp2 = pGPIOHandle->GPIO_PinConfig.GPIO_PinNumber % 4;
+		uint8_t portcode = GPIO_BASEADDR_TO_CODE(pGPIOHandle->pGPIOx);
+		SYSCFG_PCLK_EN();
+		SYSCFG->EXTICR[temp1] = portcode << (temp2 * 4);
+		// 3. enable the EXTI interrupt delivery using IMR
+		EXTI->IMR |= (1 << pGPIOHandle->GPIO_PinConfig.GPIO_PinNumber);
+```
+
+* We add macros for the IRQnum of the EXTI lines based on the ref manual
+```
+#define IRQ_NO_EXTI0 		6
+#define IRQ_NO_EXTI1 		7
+#define IRQ_NO_EXTI2 		8
+#define IRQ_NO_EXTI3 		9
+#define IRQ_NO_EXTI4 		10
+#define IRQ_NO_EXTI9_5 		23
+#define IRQ_NO_EXTI15_10 	40
+```
+
+### Lecture 113. GPIO pin Interrupt configuration coding : Part 5
+
+* we flesh out the GPIO_IRQConfig method
+* in Cortex M4 user guide we look for NVIC registers
+* EXTI lines meet the NVIC so we need to program the NVIC
+* 'NVIC_ISER' is used to enable(set) an interrupt on a specific IRQnum
+* 'NVIC_ICER' is used to disable(clear) an interrupt on a specific IRQnum
+* 'NVIC_IPR' is used to set the priority
+* NVIC_ISER are 8 registers each 32bits that can used for 32 IRQnums 
+* so again we need division by 32 and modulo to find the reg and bit to set
+* same holds for ICER
+* again we need a struct for NVIC regs
+* he changes philosophy not using arrays of regs.......... and using if/then
+```
+if(EnorDi == ENABLE) {
+		if (IRQNumber <= 31) {
+			// program ISER0
+			*NVIC_ISER0 |= (1 << IRQNumber);
+		} else if (IRQNumber > 31 && IRQNumber <= 63 ) {
+			// program ISER1
+			*NVIC_ISER1 |= (1 << IRQNumber % 32);
+		} else if (IRQNumber >=664 && IRQNumber < 96 ) {
+			// program ISER2
+			*NVIC_ISER2 |= (1 << IRQNumber % 64);
+		}
+	} else {
+		if (IRQNumber <= 31) {
+			// program ICER0
+			*NVIC_ICER0 |= (1 << IRQNumber);
+		} else if (IRQNumber > 31 && IRQNumber <= 63 ) {
+			// program ICER1
+			*NVIC_ISER1 |= (1 << IRQNumber % 32);
+		} else if (IRQNumber >=664 && IRQNumber < 96 ) {
+			// program ICER2
+			*NVIC_ISER2 |= (1 << IRQNumber % 64);
+		}
+	}
+```
+
+### Lecture 114. GPIO pin Interrupt configuration coding : Part 6
+
+* NVIC_IPR registers are 60 in number 0-59 and have four 8 bit masks for the priority of four IRQnumbers 4x60 = 240 IRQnums according to Cortex M4 Spec
+* to find the reg we need to divide the IRQnum by 4 (shift 4 bit)
+	* the 8 bit mask is the IRQpriority num on the upper 4 bits , lower 4 bits are not used
+* we add a new API for priority config `void GPIO_IRQPriorityConfig(uint8_t IRQNumber,uint8_t IRQPriority)`
+* we add a macro for priority base address `#define NVIC_PR_BASE_ADDR		((__vo uint32_t*)0xE000E400)`
+```
+void GPIO_IRQPriorityConfig(uint8_t IRQNumber,uint8_t IRQPriority){
+	//1. first lets find out the ipr register
+	uint8_t	iprx = IRQNumber / 4;
+	uint8_t iprx_section = IRQNumber % 4;
+	uint8_t shift_amount = (8 * iprx_section) + (8 - NO_PR_BITS_IMPLEMENTED);
+	*(NVIC_PR_BASE_ADDR + (iprx * 4)) |= ( IRQPriority << shift_amount);
+}
+```
+
+### Lecture 115. GPIO pin Interrupt configuration coding : Part 7
+
+* we now the path and logic of interrupt from pin to CPU
+	* there are 2 pending registers 1 in EXTI and 1 in NVIC (latches)
+* the NVIC uses the vector table for the address that stores the handlers address depending on the IRQnum
+* it is our responsibility to keep the ISR address in the vector tables reserved address for the IRQnum
+* NVIC clears its pending bit and executes the ISR (if CPU is in Handler mode... priority takes effect and we get preemption or override)
+* We need to
+	* implement the ISR (ISR are application specific)
+	* store its address in Vector table
+* startup code in assembly contains default implemenmtation of ISRs, we simply use the same name in our app
+* our responsibility is to clear the PR bit in EXIT reg (pending reuest) in the ISR
+```
+void GPIO_IRQHandling(uint8_t PinNumber){
+	//clear the exti pr register corresponding to pinnum
+	if(EXTI->PR & (1 << PinNumber)){
+		// clear by setting the bit
+		EXTI->PR |= (1 << PinNumber);
+	}
+}
+```
+
+## Section 29: Exercise : GPIO interrupts
+
+### Lecture 116. Exercise : External button interrupt implementation
+
+* Exercise: connect an external  button to pin and toggle the LED whenever interrup is triggered by the button press
+* interrupt should be triggered durring falling edge of button press
+* we will play with onboard LED (PA5) and PUSHbutton (PC13) because we are bored to use the breadboard
+* we add '003button_interrupt.c' and cp  the 002 source file which we exclude from build
+* in button config we set mode to `GpioBtn.GPIO_PinConfig.GPIO_PinMode = GPIO_MODE_IT_FT;`
+* we do the IRQ config
+* we add priority macros...just because...
+```
+GPIO_IRQPriorityConfig(IRQ_NO_EXTI15_10, NVIC_IRQ_PRI15);
+	GPIO_IRQInterruptConfig(IRQ_NO_EXTI15_10, ENABLE);
+```
+* we implement the ISR (get name from startup assembly file in vector table)
+```
+void EXTI15_10_IRQHandler(){
+	GPIO_IRQHandling(GPIO_PIN_NO_13);
+	GPIO_TogglePin(GPIOA, GPIO_PIN_NO_5);
+}
+```
+* we dont need debouncing
+* to debug the registers we need to suspend the execution to see the current vals and see if values are what it should be
+* the tutor gets corruption in register addresses
+* this is because his led and bts are on same port and in Btn config he leaves a reg uninitialized (output type) so garbase from the local val went in the reg
+* a good trick is to initialize all structs to 0 before starting filling them
+* we use memset
+```
+	GPIO_Handle_t GpioLed, GpioBtn;
+	memset(&GpioLed,0,sizeof(GpioLed));
+	memset(&GpioBtn,0,sizeof(GpioBtn));
+```
+
+### Lecture 117. Exercise : Debugging the application : Part 1
+
+* always buy a board with onboard debugger to start with
+* check registers of MCU with program in standby
+* be careful of variables and function arguments size especially when we apply bitshifting
+
+### Lecture 118. Exercise : Debugging the application : Part 2
+
+* the code below has a tricky bug `*(NVIC_PR_BASE_ADDR + (iprx * 4)) |= ( IRQPriority << shift_amount);`
+* NVIC_PR_BASE_ADDR macro is defined as uint32_t pointer sto when we increment it by 1 we actual move the pointer 4 bytes
+* se we need to remove the 4 as it is not needed and corrupts memspace
+## Section 30: SPI introduction and bus details
+
