@@ -1305,5 +1305,810 @@ void EXTI15_10_IRQHandler(){
 * the code below has a tricky bug `*(NVIC_PR_BASE_ADDR + (iprx * 4)) |= ( IRQPriority << shift_amount);`
 * NVIC_PR_BASE_ADDR macro is defined as uint32_t pointer sto when we increment it by 1 we actual move the pointer 4 bytes
 * se we need to remove the 4 as it is not needed and corrupts memspace
+
 ## Section 30: SPI introduction and bus details
 
+### Lecture 119. Introduction to SPI Bus
+
+* Serial Peripheral Interphace (SPI Bus)
+	* 1 master / 1-n slaves
+* SPI Bus signals
+	* SCLK 'Serial Clock' Master:SCLK => Slave:SCLK
+	* MOSI 'Master Out Slave In' Master:MOSI => Slave:MOSI
+	* MISO 'Master In Slave out' Slave:MISO => Master:MISO
+	* 'Slave Control' Master:gpio1 => Slave:ss
+* SPI Slaves: sensor,EEPROM,SDCARD,Display,Blowetooth ....
+* 4 I/O pins are dedicated to SPI communication with external devices
+	* MISO: Master In / Slave Out data. In the general case, this pin is used to transmit data in slave mode and receive data in master mode
+	* MOSI: Master Out / Slave In data. In the general case, this pin is used to transmit data in master mode and receive data in slave mode 
+	* SCK: Serial Clock output pin ifor SPI master and input pin for SPI slaves
+	* NSS: Slave select pin. Depending on the SPI and NSS settings, this pin can be used to select an individual slave device for communication
+* Data on MOSI/MISO data lines are synchornized with the SCK data comm clock
+* SPI is synchronous comm where MAster produces the clock
+* NSS is useful only when multiple slaves are hanging on the SPI bus
+
+### Lecture 120. SPI comparison with other protocols
+
+* SPI runs at fPCLK/2 speed
+* I2C speed is 3.4Mbps in high speed mode
+* SPI, I2C these peripherals communicate over TTL signaling in the voltage range 0V to 5V where as protocols like CAN,RS485 communicate over differential signaling (>10V). This is the reson why SPI and I2C are short distance comm interfaces
+
+### Lecture 121. Importance of SPI slave select pin
+
+* When a master wants to talk to a slave it uses one of its GPIOs to pull the slaves SS (SlaveSelect) pin to the ground
+* Slave's communication lines (MOSI/MISO) will be to High-Z state or high impedance state unless SS line is pulled to GND
+* when SS is pulled to Ground data lines can be used and a Clock must be sent along with the data
+
+### Lecture 122. SPI Minimum bus configuration
+
+* Minimal SPI Bus: SPI Bus allows the communication between one master device and one or more slave devices. In some applications SPI bus may consist of just two wires, one for the clock signal and the other for synchronous data transfer. Other signals can be added depending on the data exchange between SPI nodes and their slave select signal management
+
+### Lecture 123. SPI behind the scene data communication principle
+
+* On the MCU SPI peripheral we will find Shift Registers (typicaly just 1)
+	* assume an 8 bit shift register on Master (MCU)
+	* Slave Device also has an 8bit Shift Register
+	* MISO,MOSI,SCLK are connected
+* The goal is to send the 8 bit data from Master Shift Register (A) to Slave Shift Register (B) and the other way around
+	* A shift reg  (master) has A8,A7,A6,A5,A4,A3,A2,A1,A0 bits loaded
+	* B shift reg (slave) has B8,B7,B6,B5,B4,B3,B2,B1,B0 bits loaded
+* in each SCLK clock cycle 1 bit (A0) is moved from Areg to Breg through MOSI, there is 1 step right bit shifting on the registers and 1 bit (B0) from Breg to Areg through MISO. also the new bit is added at 7th bit position that empty due to bit shifting (and transmition of the 0th bit along MOSI and MISO lines) After 1 clock cycle the register content will be:
+	* A shift reg  (master) has B0,A7,A6,A5,A4,A3,A2,A1 bits loaded
+	* B shift reg (slave) has A0,B7,B6,B5,B4,B3,B2,B1 bits loaded
+* after 8 clock cycles we will have hte whole registers exchanged
+* the reception of data along MISO is done Automaticly if MISO is connected
+* SPI SHift regs are up to 16bit long
+
+## Section 31: SPI bus configuration and functional block diagram
+
+### Lecture 124. SPI bus configuration discussion : full duplex, half duplex and simplex
+
+* The SPI allows the MCU to communicate using different configurations, depnding on the device targeted and application requirements
+* FULL DUPLEX COMMUNICATION (default config)
+	* in this config the shift regs on Master and Slave are linked using unidirectional lines between the MOSI and MISO pins
+	* During SPI comm, data is shifted synchronously on the SCK clock edges provided by the master.
+	* The master transmits the data to be sent to the slave via the MOSI line and receives data from the slave via the MISO line
+* HALF-DUPLEX COMMUNICATION
+	* in this config one single  cross connection line is used to link the shift registers of the master and slave together
+	* during this communication, the data is synchronously shifted between the shift registers on the SCK clock edge in the transfer direction selected reciprocally by both master and slave
+	* MOSI from slave is connected to MISO of slave with a resistance (1KOhn) in between
+	* internally in devices MOSI line (in Master) and MISO line (in slave) are connected on both ends of the shift reg. when the device is in Rx mode it LSB res side is in Input state and the MSB side is in High-Z state. when it is in Tx mode MSB side is in Output state
+	* NSS is optional... HALF DUPLEX is usually for 1-1 comm
+	* Master and Slave alternate Tx and Rx roles (programmaticaly configured how to decide when to swap roles)
+	* Th unused pins can be used as GPIOs
+* SIMPLEX COMMUNICATION (one directional)
+	* Master Tx only mode, Slave Rx only mode
+	* the config settings are the same as for full-duplex. the application has to ignore the information captured on the unused pin. 
+	* this pin can be used as standard GPIO
+	* Only SCK and MOSI used
+
+### Lecture 125. SPI functional block diagram explanation
+
+* we consult STM32F4 ref manual
+* we see the SPI block diagram @SPI functional desc
+* we see that the Shift register stands between an Rx Buffer and a TX buffer
+	* MCU address/data bus (APB) writes to Tx Buffer for transmition over SPI
+	* MCU address/data bus (APB) reades from Rx Buffer data received from SPI  
+* Buffers get/put to Shift Reg complete 8/16bit frames for the SPI datalines
+* Data are read/write from buffers to Shift Reg when its not busy receiving/transmitting
+* When Shift Reg becomes free we get an interrupt
+* SPI interrupts
+	* Tx buffer empty (we can send a frame)
+	* RX buffer full (we can read a frame)
+* IF MCU is Master it has control logic for clock
+* SPI Data Block and Clock Control Block have their Registers in MemSpace
+
+## Section 32: STM32 NSS pin settings and management
+
+### Lecture 126. NSS settings in STM32 master and slave modes
+
+* Slave Select (NSS) Pin management
+	* When a device is in slave mode: the NSS works as a standard chip select input and lets the slave communicate with the master
+	* When a device is master: NSS can be used either as output or input. As an input it can prevent multi-master bus collision, as an output it can drive a slave select signal of a single slave
+
+### Lecture 127. STM32 SPI hardware and software slave managements
+
+* 2 types of slave management in STM32
+	* HW slave NSS management (SSM = 0 in SPIxCR1 reg): NSS pin must be pulled low to enable slave to comm with master. In Master Node if SSM = 0, NSS pin must be in output mode (NSS is managed by HW)
+	* SW slave NSS management (SSM = 1 in SPIx_CR1 reg): in this config, slave select info is driven internally by the the SSI bit val in SPIx_CR1 reg. SSI bit = 0 is like grounding NSS pin. The external NSS pin is free for other uses
+* In Multi Slave Bus Config we cannot use SW slave management. in that case NSS pin of Master if enabled must be connected to VDD to avoid accidentally going LOW
+
+## Section 33: SPI CPOL and CPHA discussion
+
+### Lecture 128. SPI CPOL and CPHA discussion
+
+* SPI Communication Format depends on 3 main parameters:
+	* Serial Clock (SCLK) Phase (CPHA)
+	* Serial Clock (SCLK) Polarity (CPOL)
+	* Data Frame Format (DFF) (16bit or 8bit)
+* During SPI Comm, receive and transmit operations are perfomred simultaneously
+* The Serial Clock (SCK) synchronizes the shifting and sampling of the information on the data lines
+* The communication format depends on the clock phase, the clock polarity and the data frame format. To be able to comm together, master and slaves must follow the same comm format
+* CPOL (Clock Polarity)
+	* the CPOL (clock polarity) bit controls the idle state value of the clock when no data is being transferred
+	* if CPOL is reset, the SCLK pin has a low-level idle state. If CPOL is set, the SCLK pin has a high level idle state
+* CPHA (Clock Phase)
+	* CPHA controls at which clock edge of the SCLK (1st or 2nd) the data should be sampled by the slave
+	* The combination of CPOL (clock polarity) and CPHA (clock phase) bits selects the data capture clock edge
+ * If CPHA=1 Master Places data after 1st falling edge for CPOL=1, rising for CPOL=0, Slave picks the data after 1st rising edge for CPOL=1, falling edge for CPOL=0. sampling repeats every cycle
+ * If CPHA=0 Master Places data in SCLK idle state, Slave picks the data after 1st falling edge for CPOL=1, rising edge for CPOL=0. sampling repeats every cycle
+ * The above is for MOSI line, the reverse holds for MISO line
+ * SPI Modes
+ 	* 0: CPOL=0, CPHA=0
+ 	* 1: CPOL=0, CPHA=1
+ 	* 2: CPOL=1, CPHA=0
+ 	* 3: CPOL=1, CPHA=1
+ * If CPHASE=1 data will be sampled on the trailing edge of the clock
+ * If CPHASE=0 data will be sampled on the leading edge of the clock
+
+### Lecture 129. SPI CPOL and CPHA waveform example
+
+* We use Logic Analyzer to see an actual SPI in action. without connecting to hardware we click on Start Simulation.
+* after collecting data we go to Analyzers => + => SPI and select channels
+	* MOSI = channel1
+	* MISO = channel2
+	* Clock = channel0
+	* Enable = channel3
+* leave the rest to Standard or experiment with CPOL,CPHA etc
+* click Save
+* click Start Simulation
+* we analyze the signals and see the protocol in action....
+* in Analyze=>SPI => settings we can choose the decoding
+* we see that data is on the line for capture during the edges that sampling is confgigured to happen
+* comm is very fast so traces must be short
+
+## Section 34: SPI serial clock discussion
+
+### Lecture 130. SPI peripherals of your Microcontroller
+
+* SPI peripherals are connected to ARM Cortex M4 via the APB peripheral. in STM32F446
+	* SPI1 and 4 go via APB2
+	* SPI2 and 3 go via APB1 
+
+### 131. SPI Serial clock frequency
+
+* The Max speed of SPIx SCLK is APBx/2
+* SPIx uses a clock prescalar dividing the APBx clock freq. the min value is 2
+* IF we use internal STM32F446 RC oscillator. SPI Clock Max speed is 8Mhz
+
+## Section 35: SPI Driver : API requirements and configuration structure
+
+### 132. SPI API requirements and configuration items
+
+* we will add 2 more files in /drivers folder the 'stm32f446xx_spi_driver.c' and 'stm32f446xx_spi_driver.h'
+* we will also add SPI specific content to device header 'stm32f446xx.h'
+* our driver should offer the following APIs (methods)
+	* SPI Initialization / peripheral clock control
+	* SPI TX
+	* SPI RX
+	* SPI Interrupt config and handling
+	* Other SPI management APIs
+* SPI Configuration Items
+	* SPI_DeviceMode (master, slave)
+	* SPI_BusConfig (Comm mode, FULL DUPLEX etc)
+	* SPI_DFF (8bit or 16bit)
+	* SPI_CPHA (0 or 1)
+	* SPI_CPOL (0 or 1)
+	* SPI_SSM (SW or HW)
+	* SPI_Speed
+* Exercise:
+	* Complete SPI register definition structure and other macros (peripheral base addresses, Device definitions, clock en, clock di, etc) in MCU specific header file
+	* Complete SPI Configuration structure and SPI handle structure in SPI header file
+
+### 133. updating MCU specific header file with SPI related details
+
+* baseaddresses we have them already from memory map in Ref Manual
+* we add the Registers struct
+```
+/*
+ * peripheral register definition sctructure for SPI
+ */
+typedef struct
+{
+	__vo uint32_t CR1;        /*!< SPI control register 1, Address offset: 0x00 */
+	__vo uint32_t CR2;        /*!< SPI control register 2, Address offset: 0x04 */
+	__vo uint32_t SR;         /*!< SPI status register, Address offset: 0x08 */
+	__vo uint32_t DR;         /*!< SPI data register, Address offset: 0x0C */
+	__vo uint32_t CRCPR;      /*!< SPI CRC polynomial register, Address offset: 0x10 */
+	__vo uint32_t RXCRCR;     /*!< SPI RX CRC register, Address offset: 0x14 */
+	__vo uint32_t TXCRCR;     /*!< SPI TX CRC register, Address offset: 0x18 */
+	__vo uint32_t I2SCFGR;    /*!< SPI_I2S configuration register, Address offset: 0x1C */
+	__vo uint32_t I2SPR;      /*!< SPI_I2S prescaler register, Address offset: 0x20 */
+} SPI_RegDef_t;
+```
+* we add the config and handler structs
+```
+/*
+ * Configuration structure for SPIx peripheral
+ */
+typedef struct {
+	uint8_t SPI_DeviceMode;
+	uint8_t SPI_BusConfig;
+	uint8_t SPI_SclkSpeed;
+	uint8_t SPI_DFF;
+	uint8_t SPI_CPOL;
+	uint8_t SPI_CPHA;
+	uint8_t SPI_SSM;
+}SPI_Config_t;
+
+/*
+ * Handle structure for SPIx peripheral
+ */
+typedef struct {
+	SPI_RegDef_t	*pSPIx;		/*!< This holds the base address of SPIx(x:1,2,3,4) peripheral>*/
+	SPI_Config_t	SPIConfig;
+}SPI_Handle_t;
+```
+* and the Periph pointer macros `#define SPI1 ((SPI_RegDef_t*) SPI1_BASEADDR)`
+
+### 134. SPI adding API prototypes to driver header file
+
+* we cp the pripheral clock control and init/deinit prototypes from GPIO to SPI and adapt them
+* for Data Read and Write we consider the following
+* in Peripheral Comms we have 3 types of Tx/Rx methods
+	* Polling based (blocking type)
+	* Interrupt based (non-blocking type)
+	* DMA based
+* our blocking calls are
+```
+void SPI_SendData(SPI_RegDef_t *pSPIx, uint8_t *pTxBuffer, uint32_t Length);
+void SPI_ReceiveData(SPI_RegDef_t *pSPIx,uint8_t *pRxBuffer, uint32_t Length);
+```
+* length should always be 32bit or more
+* we cp the GPIO IRQ config and Handlers and mod them
+* in handler we pass the handle struct pointer `void SPI_IRQHandling(SPI_Handle_t *pHandle);`
+
+## Section 36: SPI Driver API Implementation : Clock control
+
+### 135. Implementation of SPI peripheral clock control API
+
+* we add the stubs in C for all APIs so far.
+* code for periph clock enable is the same like GPIO we cp and mod it
+* code for deinit is also same for SPI like for GPIO we cp it and the macros making the changes necessary
+
+## Section 37: SPI Driver API Implementation : SPI init
+
+### Lecture 136. SPI user configuration options writing and register bit definition macros
+
+* we need to config ALOT of SPI regs
+* Control Regs config the behaviour of the SPI
+* Status Reg has the Status Flags og the buffer + error flags
+* we define macros for config options
+* for mode we have master and slave
+* for bus config we have full duplex, half duplex, simplex tx only, simplex rx only
+* for clockspeed we see the VR1 baudrate bits to see the options. they are the clock dividers (prescalars) 2,4,8,16,21,64,128,256
+* we add macros for DFF,CPOL,CPHA,SSM with the defaults to 0.
+* we check the regs for the relevant bitfields to set/clear like we did in GPIO
+* periph by default is in slave mode and not producing SCLK
+* for master/slave we set bit MSTR of CR1
+* for bidirectional mode the bits BIDIOE and BIDIMODE of CR1
+	* 2 line unidierectional is Full Duplex
+	* 1 line bidir is HALF DUPLEX
+	* in HALF DUPLEX BIDIOE is used to change programmatically to receive only and transmit only mode
+* SIMplex RX is configured if we set RXONLY while BIDIMODE is 0
+* To make Full DUplex setup Simplex TX only we dont connect the MISO line from master to miso line of Slave
+* To make SImplex Rx only we cannot just disconnect MOSI in full duplex mode. Even in RX mode Master has to provide the clock. Master in order to produce clock data must be on the MOSI line so we cannot just disconnect it. thats why RXONLY reg bit is needed. so Periph will output clock despite data being absent from MOSI
+
+### Lecture 137. Implementation of SPI init API : Part 1
+
+* SPI_Init is all about translating the Config struct options into bit set/clear in the relevant bitfields of the Control Registers
+* we use macros for the bit positions
+
+### Lecture 138. Implementation of SPI init API : Part 2
+
+* we do the same for CR2 and SR adding macros in device header for bitfield positions
+
+## Section 38: SPI Driver API Implementation : Send Data
+
+### Lecture 139. Implementation of SPI send data API : Part 1
+
+* we will implement a low performance blocking call where the function called will wait till all the bytes for transmission are sent
+* the logic is checking data sent compared to the length passed if there are more data they are placed to DR reg for transmission ONLY if Tx buffer is empty
+* in Status Reg TXE bit (1) tells us if Tx buffer is free when is is SET
+* TX buffer and RX buffer are peripheral internal. we access them with the DR (Data Register)
+* to read from DR we check the bit RXNE in SR if it is SET. this meand there are data for us waiting from RX Buff
+
+### Lecture 140. Implementation of SPI send data API : Part 2
+
+* we implement the method
+* we check TXE flag and wait. 
+* we add a helper method to check bit flags where we pass the periph handle pointer and the FLAG as a macro
+```
+uint8_t SPI_GetFlagStatus(SPI_RegDef_t *pSPIx,uint32_t FlagName){
+	if(pSPIx->SR & FlagName){
+		return FLAG_SET;
+	}
+	return FLAG_RESET;
+```
+* this can work for all SR flags
+
+### Lecture 141. Implementation of SPI send data API : Part 3
+
+* the full blocking call
+```
+void SPI_SendData(SPI_RegDef_t *pSPIx, uint8_t *pTxBuffer, uint32_t Len){
+	while(Len > 0){
+		//1. wait till TXE is SET
+		while(SPI_GetFlagStatus(pSPIx,SPI_TXE_FLAG) == FLAG_RESET);
+		//2. check the DFF bit in CR1
+		if(pSPIx->CR1 & (1 << SPI_CR1_DFF)){
+			//16bit DFF
+			//1. load the data into the DR reg
+			pSPIx->DR = *((uint16_t*)pTxBuffer);
+			Len = Len -2;
+			(uint16_t*)pTxBuffer++;
+		} else {
+			//8bit DFF
+			pSPIx->DR = *pTxBuffer;
+			Len--;
+			pTxBuffer++;
+		}
+	}
+}
+```
+
+* it is possible that while loop will hang forever. t hats why we need to avoid using this method
+* we add a empty main in a new source file and build
+
+## Section 39: Exercise : SPI Send Data
+
+### Lecture 143. Exercise to test SPI Send Data API
+
+* Test the SPI_SendData API to send the string "Hello World" and use the below config
+	* SPI-2 Master mode
+	* SCLK=max possible
+	* DFF=0 and DFF=1
+* we will not use a slave so we need sclk and mosi
+* so we will config 2 pins but we need to decide on which pins to use
+
+### Lecture 144. Finding out microcontroller pins to communicate over SPI2
+
+* finding PINs is Board Specific
+* for NUCLEO-F446RE we will use SPI2 on:
+	* PB12 as SPI2-NSS (AF5)
+	* PC02 as SPI2-MISO (AF5)
+	* PC03 as SPI2-MOSI (AF5)
+	* PB10 as SPI2-SCLK (AF5)
+
+### Lecture 145. Exercise : Code implementation : Part 1
+
+* first we will configure the pins for SPI
+* we use GPIO_Init() and 2 handle structs as we use 2 ports B and C (in )
+
+### Lecture 146. Exercise : Code implementation : Part 2
+
+* we implement SPI initialization
+```
+	SPI_Handle_t	SPI2handle;
+	SPI2handle.pSPIx = SPI2;
+	SPI2handle.SPIConfig.SPI_BusConfig = SPI_BUS_CONFIG_FD;
+	SPI2handle.SPIConfig.SPI_DeviceMode = SPI_DEVICE_MODE_MASTER;
+	SPI2handle.SPIConfig.SPI_SclkSpeed = SPI_SCLK_SPEED_DIV2; //generates SCLK of 8MHz
+	SPI2handle.SPIConfig.SPI_DFF = SPI_DFF_8BITS;
+	SPI2handle.SPIConfig.SPI_CPOL = SPI_CPOL_LOW;
+	SPI2handle.SPIConfig.SPI_CPHA = SPI_CPHA_LOW;
+	SPI2handle.SPIConfig.SPI_SSM = SPI_SSM_EN; //SW slave management enabled for NSS pin
+	SPI_Init(&SPI2handle);
+```
+* we add peripheralclock enable in Init methods of drivers
+* we send some date with blocking call
+* we implement a small buffer (string) and send data
+```
+char user_data[] = "Hello world";
+SPI_SendData(SPI2, (uint8_t *)user_data, strlen(user_data));
+```
+
+### Lecture 147. Exercise : Code implementation : Part 3
+
+* we have enabled SPI periph clock and all the config but SPI is yet not enabled
+* we need to SET the SPE bit (6) in SPI CR1
+* we need to configure the SPI regs and before sending data enable it
+* when we enable SPE periph is busy with comm we cannot configure it anymore
+* we add an API just for that
+
+### Lecture 148. Exercise : Testing
+
+* we connect Logic Analyzer 
+* we dive with 16 to lower clock to 1mhz so that our L.A can capture it
+* we flash . prepare the capture reset and let it capture the comm
+* we set to capture 4 secs but see no data. spi is not working
+* we fire up debugger and put breakpoint after initialization and check the SPI2 registers which look good.
+	* our spi is master
+	* ssm is 1
+	* baudrate is ok
+	* cr2 is 0
+	* txe is set in SR
+* we check RCC. looks good
+* we enable the SPI and recheck the registers
+* we see that SPI2 is no longer master MSTR in CR1 is 0
+* this should not happen. unless SPI2 is disabled SPE=0 it should be master. we see that SPE is also 0
+* we see that in SR MODF bit is set... an error occured so SPE and MSTR is cleared
+* we look in the manual and see it has to do with NSS and SSi bit in NSS is in SW mode. we need to set SSI bit 1
+* we add a method 'SPI_SSIConfig' where we set or reset the bit and add it as API while we should put it in Init 
+* it works
+* we need to disable the peripheral (SPE of CR1=0) after finishing using it to avoid errors
+* it seems MCU is picking up noise in MISO as RX buffer is getting data and creating overrun
+
+## Section 40: Exercise : STM32 master and Arduino Slave communication
+
+### Lecture 149. Exercise : Communicating with Arduino slave
+
+* when the button on the master is pressed, master should send string of data to the arcuino slave connected. the data received by the arduino will be displayed on the arduino serial port
+	* Use SPI full duplex mode
+	* ST board will be SPI master and Arduino will be configured SPI slave
+	* use DFF =0
+	use HW Slave management (SSM=0)
+	* SCLK speed 2MHz fclk = 16MHz
+* master wont recieve anything from slave so we may not configure MISO
+* slave does not know how many bytes of data master is going to send. 
+* master first sends number of bytes info which slave is going to receive next
+* STboard will connct to Arduino board and this to PC (serial Monitor)
+* connect their grounds (ST to Arduino)
+* connect Logic Anlyzer
+* we need to power up arduino and dowload slave sketch '001SPISlaveRxString.ino'
+
+### Lecture 150. Exercise : Coding Part 1
+
+* copy everything from main file 004spi_tx_testing.c to 005spi_txonly_arduino.c
+* we uncomment NSS pin config code
+* we put the SPEED_DIV to 8 (2MHz)
+* SPI_SSM to Disable (HW control)
+* Also Comment the SSI Config calls and test
+* slave wont respond unless NSS is pulled to low
+* when SSM = 0 in ST whenever we set SPE to 1, NSS will be pulled to low automatically. when we put SPE to 0 NSS is pulled to high
+* to enable NSS output there is SSOE. we need to set it 1 so that NSS pin will be controlled by SPE. SSOE=0 is used for multimaster comm
+* we add 1 more api call to control SSOE
+
+### Lecture 151. Exercise : Coding Part 2
+
+* we add button code from previous project to trigger transmission on User Button Press
+* we wait till button is pressed and then send. this is in a while loop so we can send multiple times
+* disabling the SPI immediatly after sending last byte might create problems. we should wait till its received successfuly
+* we need to make sure comm is not busy before disabling the peripheral
+
+### Lecture 152. Exercise : Coding Part 3
+
+* we need to check the busy flag in status reg before disabling the SPI `while(SPI_GetFlagStatus(SPI2, SPI_BUSY_FLAG));`
+* also we need to send the length of the string to the slave to know when to close its peripheral
+```
+	uint8_t dataLen = strlen(user_data);
+	SPI_SendData(SPI2,&dataLen,1);
+```
+
+### Lecture 153. Exercise : Testing
+
+* It WORKS!!!
+* in his example its not working so its setting PIN intrnal Pull UP in GPIO
+* in our case we use no pullups and it works. we leave it as is
+* as we drive a slave its good to use internal pull ups. we confirm it works better and its more stable to noise
+
+## Section 41: SPI Driver API : Receive data
+
+### Lecture 154. Implementation of SPI data receive API : Part 1
+
+* receive data is a similar process like transmit data
+* we will first do it in a blocking call
+	* we check if LEn==0 if yes exit
+	* if Len > 0 wait till Rx Buffer is non empty RXNE flag in SPI SR
+	* if RXNE=1 depending on DFF we read from DR 1 or 2 bytes of data and increment our rx buffer address. 
+	* we decrease the Len 1 or 2 and repeat
+* we need to get the length of transmitted data as first data to set Len
+
+### Lecture 155. Implementation of SPI data receive API : Part 2
+
+* we ll implement the ReceiveData function
+* we cp the code from SendData to mod it.
+* its almost the same. we read instead of write to DR and instead of TXE we check RXNE
+
+## Section 42: Exercise : SPI receive data
+
+### Lecture 156. Exercise : SPI command and response based communication
+
+* SPI Master (STM) and SPI Slave(Arduino) command & response based communication
+* When the button on the master is pressed, master sends a command to the slave and slave responds as per the command implementation
+	* Use the SPI Full Duplex mode
+	* ST board will be in SPI master mode and Arduino will be configued for SPI slave mode
+	* Use DFF = 0
+	* Use HW slave management (SSM=0)
+	* SCLK speed = 2MHz, fclk = 16MHz
+* we need to connect MISO and also probe it it Logic Analyzer
+* we need to upload sketch '002SPISlaveCmdHandling.ino' in Arduino UNO
+* The protocol we will implement is
+	* Master => Slave : Master Sends a Command
+	* Slave => Master : Slave responds with NACK (0xA5) or ACK (0xF5) (1byte)
+	* if NACK: Master Display Error Msg
+	* if ACK: Master => Slave: Master sends 1 or more command Arguments
+	* Slave takes action according to command
+	* Slave => Master: Slave response for data read command
+* Command Formats: <command_code(1)> <arg1> <arg2>
+1. CMD_LED_CTRL <pin no(1)> <value(1)>
+	* <pin no> : digital pin number of the arduino board (0to9) 1byte
+	* <value> : 1 = ON, 0 = OFF (1 byte)
+	* Slave Action : control the digital pin ON or OFF
+	* Slave returns : nothing
+2. CMD_SENSOR_READ <analog pin number(1)>
+	* <analog pin number> : analog pin number of the Arduino board (A0 to A5) (1 byte)
+	* Slave action : slave should read the analog value of the supplied pin
+	* Slave returns : 1 byte of analog read value 
+3. CMD_LED_READ <pin no(1)>
+	* <pin no> : digital pin number of the arduino board (0to9) 1byte
+	* Slave Action : Read the status of the supplied pin number
+	* Slave returns : 1 byte of led status. 1 = ON, 0 = OFF
+4. CMD_PRINT <len(2)> <message(len)>
+	* <len> : 1 byte of length infformation of the message to follow
+	* <message> : message of 'len' bytes
+	* Slave Action : Receive the message and display via serial port
+	* Slave returns : Nothing
+5. CMD_ID_READ
+	* Slave Returns : 10 bytes of board id string
+* connect to pin num 9 of Arduino a 470ohm resistor => A LED => Ground
+* Application flow chart:
+* Start
+* Enter main()
+* All inits
+* While loop
+	* Wait till button is pressed
+	* execute CMD_LED_CTRL 
+	* Wait till button is pressed
+	* execute CMD_SENSOR_READ
+	* Wait till button is pressed
+	* Execute CMD_LED_READ
+	* Wait till button is pressed
+	* Execute CMD_PRINT
+	* Wait till button is pressed
+	* Execute CMD_ID_READ
+
+### Lecture 157. Exercise : Coding Part 1
+
+* create a new source file for main
+* cp code from prev exercise
+* uncomment MISO
+* we add macros for protocol commands
+* in main we start implementing the flow
+* we sent the first command
+```
+		uint8_t commndcode = COMMAND_LED_CTRL;
+		SPI_SendData(SPI2,&commndcode,1);
+```
+* slave receives the command and loads its SPI Shift reg with ACK or NACK.
+* SPI slave wont initiate data transmision. as we have seen we have to send 1 byte to get 1 byte back. as MOSI and MISO work in ame time on both shift regs...
+* so we will send a dymmy byte to get the loaded data back from slave
+* the size of dummy data depends on the size of reg (DFF) `SPI_SendData(SPI2,&dummy_byte,1);`
+* then we read back the response
+* In SPI comm when Master or Slave sends 1 byte it also receives 1 byte (the content of the other device's shift reg)
+* we need dummy reads to make sure that when we will need to get meaning full data we will have them.
+* this will clear the RXNE flag to signal that data is read
+* we test the code and it works!! (trace is OK, we need to reset the boards and use USER Button)
+```
+		//1. CMD_LED_CTRL <pin no(1)> <value(1)>
+		commndcode = COMMAND_LED_CTRL;
+		SPI_SendData(SPI2,&commndcode,1);
+		// do dummy read to clear off the RXNE
+		SPI_ReceiveData(SPI2,&dummy_read,1);
+		// send dummy byte to slave to get back the ACK/NACK
+		SPI_SendData(SPI2,&dummy_write,1);
+		SPI_ReceiveData(SPI2,&ackbyte,1);
+		if(SPI_VerifyResponse(ackbyte)){
+			// send arguments
+			args[0] = LED_PIN;
+			args[1] = LED_ON;
+			SPI_SendData(SPI2,args,2);
+		}
+```
+
+### Lecture 158. Exercise : Coding Part 2
+
+* we will implement the second command in the same fashion
+* to test analog read we connect A0 to GND to read 0 and then we connect A0 to 5V to read 255, if we connect to 3.3V we read a value between 0 to 255
+* we can also use printf using trace on stm to print the value of analog using the ITM unit (see embedded C course lecture for instructions)
+* we see that we get back the pin number and not the analog value.
+* we get back what we sent..
+* this is because slave has no time to get the analog value and load it so that we can read it with SPI from master
+* it has to do ADC conv.
+* we add some delay and retry. IT F...... WORKS!!!
+
+### Lecture 159. Exercise : Coding Part 3
+
+* we add the rest of the commands its the same
+* here the lecturer uses semihosting to printf trace on terminal while running the app on device in debug mode
+* Using Semihosting
+	* linker argument settings `-specs=rdimon.specs -lc -lrdimon`
+	*  debug configuration of our app: monitor arm semihosting enable
+	* in main.c use code below
+```
+extern void initialise_monitor_handles();
+initialise_monitor_handles();
+```
+* also this needs OpenOCD
+* we have clear instructions for this in embedded C course for the CubeIDE
+* if we try to printf floats MCU will go to use the FPU. if we have not enable it it throws exception. we need to tell compiles to not use it and use SW instead (see embedded C course)
+
+## Section 43: SPI interrupts
+
+### Lecture 160. SPI peripheral interrupting the processor
+
+* During SPI communication, interrupts can be generated by the following events:
+	* Transmit Tx buffer ready to be loaded (TXE) : Enable Interrupt Control Bit TXEIE 
+	* Data received in Rx buffer (RXNE) : Enable Interrupt Control bit RXNEIE
+	* Master mode fault MODF (in single master case we must avoid this error happening), Overrun error (OVR), CRC Error (CRCERR), TI Frame Format Error (FRE) : Enable Interrupt Control Bit ERRIE
+
+* Interrupts can be enabled and disabled separately
+* SPI interrupts the rpocessor through a unique interrupt line per SPI peripheral that goes to NVIC. no EXTI etc
+* we will compete SPI IRQnumber def macros in MCU device header
+* we then have to implement the IRQ config API in SPI drivers c file
+
+## Section 44: SPI interrupt mode APIs
+
+### Lecture 161. SPI interrupt mode API implementation and changes to handle structure
+
+* we will create 2 more APIs to send receive data using the interrupts 'SPI_SendDataIT' and 'SPI_ReceiveDataIT'
+* we pass it the Handle struct where we ewill add more config options for Interrupts
+* in send data with interrupts
+	1. save the tx buffer address and Len information in some global variables
+	2. Mark the SPI state as busy in transmission so that no other code can take over same SPI peripheral until transmission is over
+	3. enable the TXEIE control bit to get interrupt whenever TXE flag is set in SR
+	4. Data Transmission will be handled by the ISR code (will implement later)
+* we need global vars as our code will switch from iSR to main and back
+* first we have to create some place holder variables to save applications Tx address, len ans SPI state.
+* we will add in hadle struct
+	* Tx buffer address
+	* Rx buffer address
+	* Tx length
+	* Rx length
+	* Tx state
+	* Rx state
+* The possible SPI app states are
+	* SPI_READY
+	* SPI_BUSY_IN_TX
+	* SPI_BUSY_IN_RX
+
+### Lecture 162. SPI send data with interrupt API implementation
+
+* we implement the SendIT method implementing the 3 of 4 steps described
+```
+uint8_t SPI_SendDataIT(SPI_Handle_t *pSPIHandle, uint8_t *pTxBuffer, uint32_t Len){
+	uint8_t	state = pSPIHandle->TxState;
+	if(state != SPI_BUSY_IN_TX){
+		//1. save the tx buffer address and Len information in some global variables
+		pSPIHandle->pTxBuffer = pTxBuffer;
+		pSPIHandle->TxLen = Len;
+		//2. Mark the SPI state as busy in transmission so that
+		// no other code can take over same SPI peripheral until transmission is over
+		pSPIHandle->TxState = SPI_BUSY_IN_TX;
+		//3. enable the TXEIE control bit in CR2 to get interrupt whenever TXE flag is set in SR
+		pSPIHandle->pSPIx->CR2 |= (1 << SPI_CR2_TXEIE);
+	}
+	return state;
+}
+```
+
+### Lecture 163. SPI receive data with interrupt implementation
+
+* we do the same for ReceiveIT (same code, just instead of Tx => Rx)
+
+## Section 45: SPI Driver API : IRQ handling
+
+### Lecture 164. SPI : Handling of interrupts
+
+* we will implement the SPI IRQ handle
+* the flow of actions in SPI IRQ handler:
+* Enter ISR
+* Check which event caused interrupt to trigger (Check the SPI SR)
+	* interrupt is due to setting of RXNE flag: Handle RXNE event (receive)
+	* interrupt is due to setting of TXE flag: Handle TXE event (transmit)
+	* interrupt is due to setting of an ERROR flag: Handle error	
+* Handling the TXE interrupt: (8bit or 16bit mode)
+	* write 1 byte (8bit) or 2bytes (16bit) to SPI DR
+	* Len-- (8bit) or Len -=2 (16bit)
+	* Len == 0 ? Close the SPI TX : wait for next TXE interrupt
+
+### Lecture 165. SPI IRQ handler implementation : Part 1
+
+* we implement the handler where based on SR flags we invoke the specific handler
+* we check for RXNE, TXE and OVR
+* Overrun error happens when Master or Slave completes reception of next data frame while read operation of previous frame from RX buffer is not complete. data is NOT updated. so a read operation will retturn the previously received frame. al other transmitted data is lost
+* to clear we need to read the DR and SR reg
+
+### Lecture 166. SPI IRQ handler implementation : Part 2
+
+* we add the prototypes of 2 specific ISRs in driver.c as we dont want to expose them
+* we define them as static to forbid external calls (compiler error)
+* we implement the TXE ISR handler code based on the activity flow we saw already
+* we copy code from SendData blocking call as its the same the part when we load DR and change pointer and len
+* also when Len==0 we end transmission by disablind the TXIE (TXE interrupt) and releasing the buffer (assign it to NULL)
+* to use NULL keyword we `#include <stddef.h>`
+* we also call a callback to inform the app
+```
+static void spi_txe_interrupt_handle(SPI_Handle_t *pSPIHandle){
+	if(pSPIHandle->pSPIx->CR1 & (1 << SPI_CR1_DFF)){
+		//16bit DFF
+		//1. load the data into the DR reg
+		pSPIHandle->pSPIx->DR = *((uint16_t*)pSPIHandle->pTxBuffer);
+		pSPIHandle->TxLen -= 2;
+		(uint16_t*)pSPIHandle->pTxBuffer++;
+	} else {
+		//8bit DFF
+		pSPIHandle->pSPIx->DR = *pSPIHandle->pTxBuffer;
+		pSPIHandle->TxLen--;
+		pSPIHandle->pTxBuffer++;
+	}
+	if(!pSPIHandle->TxLen){
+		// if TxLen = 0 close the SPI transmission and inform the app
+		pSPIHandle->pSPIx->CR2 &= ~(1 << SPI_CR2_TXEIE);
+		pSPIHandle->pTxBuffer = NULL;
+		pSPIHandle->TxState = SPI_READY;
+		SPI_ApplicationEventCallback(pSPIHandle,SPI_EVENT_TX_CMPLT);
+	}
+}
+```
+
+* we implement the callback API method
+* possible events for the callback defined as macros: tx compl, rx comp, ovr err, crc err
+* we do the same for Receive (similar code)
+
+### Lecture 167. SPI IRQ handler implementation : Part 3
+
+* we implement OVR error interrupt handler
+* we will read DR and SR to clear the flag and inform the app with the Callback
+```
+static void spi_ovr_err_interrupt_handle(SPI_Handle_t *pSPIHandle){
+	uitn8_t temp;
+	//1. clear the flag
+	if(pSPIHandle->TxState != SPI_BUSY_IN_TX){
+		temp = pSPIHandle->pSPIx->DR;
+		temp = pSPIHandle->pSPIx->SR;
+	}
+	//2. inform the application
+	SPI_ApplicationEventCallback(pSPIHandle,SPI_EVENT_OVR_ERR);
+}
+```
+* the check is place to protect the app from a reset that will hinder transmission. in this case the callback gives the app responsibility to handle the error
+* we add 3 more calls to the API
+```
+void SPI_ClearOVRFlag(SPI_RegDef_t *pSPIx);
+void SPI_CloseTransmission(SPI_Handle_t *pHandle);
+void SPI_CloseReception(SPI_Handle_t *pHandle);
+```
+* in close Tx and Rx methods we just cp the code from ISR handlers when Len=0
+* they are used for emergency aborting tx or rx
+* so if app is busy transmitting and OVR happens app is notified with the callback. then app calls the ClearOVRflag where we just read from DR and SR to clear the flag
+* when we dont assign a var and want to get rd of compiler warning we cast it to void `(void)temp;`
+* we add a prototype for callback
+* we add a weak implementation of the callback in driver.c file and let the app to implement it at will `__attribute__((weak))`
+* we add a new main file '007spi_cmd_handling_it.c' and cp the code from last file
+* we add global variables for SPI Comm (data passed between main and ISR)
+```
+SPI_Handle_t SPI2handle;
+uint8_t RcvBuff[100];
+uint8_t ReadByte;
+uint8_t RxContFlag = RESET;
+```
+* in main the example is only for receving data.. it is not even sendind dummy data.... its crap but we get an idea how to do it if needed. Big Disapointment!!
+* Be careful with Interrupt Priorities!!!!
+
+## Section 46: Common problems in SPI
+
+### Lecture 168. Common problems in SPI and Debugging Tips
+
+* Troubleshooting SPI:
+	* Master Mode bit must be enabled in the CR1 if we are configing SPI as Master
+	* SPIpeiph enable bit must be enabled (SPE) last after all config
+	* SPI peripheral clock must be enabled from RCC
+* Problem1: master cannot produce clock and data
+	* Reason1: non-proper config of GPIO I/O lines
+	* Reason2: configuration override. Debug Tip: Dump out all the required register contents just before you begin the transmission
+* Problem2: master is sending data but slave is not receiveing data
+	* Reason1: not pulling down the slave select to ground before sending data to the slave. Debug Tip: probe with logic analyzer to confirm NSS going down during comm
+	* Reason2: non-proper configuration of I/O lines for Alternate Functionality. Debug Tip: PRobe the GPIO AF register
+	* Reason3: not enabling the peripheral IRQ num in the NVIC. Debug Tip: Probe the NVIC Irq Mask reg  to see whether the bit position corr to the IRQ num is set or not
+* Problem 3: SPI interrupts do not trigger
+	* Reason1: Not enabling the TXE or RXNE interrupt in the SPI configuration register. Debug Tip: Check the SPI config register to see TXEIE and RXNEIE bits are set to enable IRQ
+	* Reason 2: not enabling the SPI IRQ in NVIC. Debug Tip: Probe NVIC REG to see if bits are set
+* Problem 4: Master is producing right data but slave is receiving different data
+	* Reason1: Using Long Wires in High Freq comm Debug Tip: use shorter wires, reduce the SPI serial freq to 500kHz and check
+
+## Section 47: I2C introduction and I2C signals
+
+### Lecture 169. I2C introduction and differences with SPI
+
+* 
