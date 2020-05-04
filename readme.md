@@ -2209,4 +2209,88 @@ uint8_t RxContFlag = RESET;
 
 ### Lecture 176. Example of master writing to slave
 
-* 
+* Master Write
+	* first master generates the start condition
+	* sends the adress 7bit, the R/W byte (W=0) and gets an ACk from slave
+	* then he can send consecutive bytes to slave which ACks them
+	* then sends the stop condition
+* Master write
+	* first master generates the start condition
+	* sends the adress 7bit, the R/W byte (R=1) and gets an ACk from slave
+	* then slave sends consecutive bytes to master which ACks them
+	* on last byte send by slave master NAcks
+	* slave stops sending
+	* then sends the stop condition
+
+### Lecture 177. Understanding repeated START condition
+
+* Repeated start without a stop: 
+* Master reads the contents of EEPROM at address 0x45
+	* master writes to EEPROM the address of memory to get contents Start => I2C Address of EPROM (W) => Data(Mem Address) => STOP
+	* slave is ready to send the data
+	* Master Reads the contents from slave: Start => I2C Address of EPROM (R) => Data(Content) => Stop
+* This is bad as someone else can alter the EEPROM Content in between or ocupy the bus and introduce delay. He can instead of stop start in between use Repeated Start
+* If the bus has 1 master it realy doesnt matter if we use repeated start at all
+
+## Section 51: STM32 I2C functional block diagram
+
+### Lecture 178. I2C functional block diagram
+
+* STM32F446xx has 3 I2C IFs in APB1
+* SDA and SCL pins go to Noise Filters to smooth out signals
+	* SDA to Data Control connected to the Data Shift Register
+	* SCL tp Clock Control
+* I2C is half duplex so it has only one Data Register from where data is copied to Data Shift reg to go out from SDA through Data Control block. reverse also holds for read
+* address reg is used to store the device address (when in slave mode)
+* Clock control block is cofiged by Clock Control Reg (CCR) and control logic which is configed by CR1 and Cr2 and its status goes to Status Reg
+
+## Section 52: I2C driver API requirements and config structures
+
+### Lecture 179. I2C driver API requirements
+
+* we add 2 more files in project for i2c .c and .h and start the drill
+* for the I2C driver we will need the folloing API calls
+	* I2C initialization
+	* I2C master TX
+	* I2C Master RX
+	* I2C Slave Tx
+	* I2C Slave Rx
+	* I2C Error Interrupt Handling
+	* I2C Event Interrupt Handling
+* also the standard apis like peripheral enable and all
+* Configurable Items for I2C
+	* I2C_SCLSpeed
+	* I2C_DeviceAddress
+	* I2C_ACKControl
+	* I2C_FMDutyCycle.
+* IN Fast Mode the clock duty cycle is configurable
+* Tasks to complete
+* create the 2 files for driver
+* add i2c details to MCU header file
+	* i2c periph reg def struct
+	* i2c base address macros
+	* i2cx peripheral def macros
+	* macros to enable /disable i2cx perih clock
+	* bit position defs of i2c periph
+* we cp them from courseRepo
+
+### Lecture 180. I2C handle and configuration structure
+
+* we add config struct and handle struct indriver.h
+```
+typedef struct {
+	uint32_t 	I2C_SCLSpeed;
+	uint8_t		I2C_DeviceAddress;
+	uint8_t		I2C_ACKControl;
+	uint16_t	I2C_FMDutyCycle;
+}I2C_Config_t;
+
+typedef struct{
+	I2C_RegDef_t	*pI2Cx;
+	I2C_Config_t	I2C_Config;
+}I2C_Handle_t;
+```
+
+### Lecture 181. I2C user configurable macros
+
+* we add the options for the cofig attributes in H
