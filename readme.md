@@ -2322,4 +2322,60 @@ typedef struct{
 
 ### Lecture 184. I2C serial clock settings with explanation
 
+* in CR2 FREQ bits we pass the APB1 clock frequency in MHz
+* FREQ val combined with CCR produces the SCL freq
+* To generate a 100khw SCL clock with APB1 clock PCLK1 = 16MHz
+	* We configure the mode in CCR reg (15th bit) as SM
+	* Program FREQ field of CR2 with the value of PCLK1 (16 or 0x10)
+	* Calculate and Program CCR value in CCR field of CCR register: For SM => 
+		* Thigh(SCL)=CCR * TPLC1
+		* Tlow(SCL)=CCR * TPLC1 (80 = 0x50)
+* In FM Mode, generate a 200kHZ SCL freq, APB1 Clock (PCLK1) = 16MHz
+	* Configure the mode i CCR register (15th bit) as FM
+	* Select the duty cycle of Fast mode SCL in CCR reg (14th bit)
+	* Program FREQ field of CR2 with the value of PCLK1 (16 or 0x10)
+	* Calculate and Program CCR value in CCR field of CCR register: For SM => 
+		* If DUTY = 0: Thigh(SCL)=CCR * TPLC1, Tlow(SCL)=2 * CCR * TPLC1
+		* If DUTY = 1: Thigh(SCL)=9 * CCR * TPLC1, Tlow(SCL)=16 * CCR * TPLC1
+* There are minimum requirements for Tlow and Thigh for each mode in the I2C Spec. we must be sure our times are ok with the spec
+
+### Lecture 185. Clock Stretching
+
+* Clock stretching means holding the clock to 0 (GND level)
+* The moment clock is held to low, the the whole I2C interface pauses untill clock is given up to its normal operation level
+* I2C devices, either Master or Slave, uses this feature to slow down the communication by stretching SCL to low, which prevents the clock to Rise high again and the I2C comm stops for a while
+
+* Clock speed is set by Master.
+* there are cases where I2C slave is not able to co-op with the clock speed given by master and needs to slow down
+* slave need time to keep up. it uses clock stretching, holding clock to low. this pauses the I2C operation for a while
+* holding down the clock does not count as clock cycle for the other participant to decode whants sent (there is no edge in SCl after all) when clock resumes clock cycles counting resumes
+
+## Section 54: I2C Driver API : I2C Init
+
+### Lecture 186. Implementation of I2C init API : Part 1
+
+* we need to translate Config options to bit flags in regs
+* we have to calculate APB1 speed
+* clock is divided by prescalers in RCC registers
+* RCC_CFGR reg SWS bits to detetmine clock source
+* if its PLL we need a new function to calculate the clock
+* HPRE bits in RCC_CFGR give the AHB prescaler
+* APB prescaler is also in RCC_CFGR PPRE1 bits
+
+### Lecture 187. Implementation of I2C init API : Part 2
+
+* mask out the vals when setting bit fields for safety
+* we set ADD[7:1] (slave address) in I2C_OAR1 reg
+* setting ADD0 only when using 10bit address
+* we leave ADDMODE bit (15) to 0 for 7b address
+* also manual says that we must set 14bit to 1
+
+### Lecture 188. Implementation of I2C init API : Part 3
+
+* we go on to configure CCR based on the FM mode and the APB clock and the SCL clock speeds
+
+## Section 55: I2C Driver API : I2C Master send data
+
+### 189. I2C transfer sequence diagram for master sending data
+
 * 
