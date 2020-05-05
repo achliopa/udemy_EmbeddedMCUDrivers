@@ -2293,4 +2293,33 @@ typedef struct{
 
 ### Lecture 181. I2C user configurable macros
 
-* we add the options for the cofig attributes in H
+* we add options for the cofig attributes in Headers as macros
+* we can define speeds below the max speed available
+* in CR1 definition we see that ACK is disabled by default
+
+### Lecture 182. I2C API prototypes
+
+* we dd the api stubs in .h
+* we cp the SPI API stubs to i2c to mod
+* we keep the essentials only
+* we impement PeriphCntrol and Deinit, IRQInterConfig and PiorityConfig, Periph Control
+* the SPE equivalent for I2C is PE bit in CR1
+
+### Lecture 183. Steps for I2C init implementation
+
+* In I2C Init we need to
+	* configure the mode (std or fast)
+	* config the speed of periph clock (SCL) (the faster the shorter the wires)
+	* config device address (applicable when device is slave)
+	* Enable ACKing
+	* cnfig rise time  for I2C pins (skew rate)
+* we MUST do this while periph is disabled in CR1 (PE=0)
+* In STM32F$x I2C periph, CR2 and CCR regs are used to cotnrol the I2C serial clock sets and timing of I2C like setup time and hold time
+	* 6 FREQ bits in CR2 (0-5)
+	* 12 CC bits in CCR (0-11)
+	
+## Section 53: I2C serial clock discussion(SCLK)
+
+### Lecture 184. I2C serial clock settings with explanation
+
+* 
