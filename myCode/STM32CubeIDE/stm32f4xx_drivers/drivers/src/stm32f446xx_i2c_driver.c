@@ -7,6 +7,9 @@
 
 #include "stm32f446xx_i2c_driver.h"
 
+// Private Helper Methods Prototypes
+static void I2C_GenerateStartCondition(I2C_RegDef_t *pI2Cx);
+
 // AHB prescaler values
 uint16_t AHB_PreScaler[8] = {2,4,8,16,64,128,256,512};
 // APB1 prescaler values
@@ -197,6 +200,58 @@ void I2C_DeInit(I2C_RegDef_t *pI2Cx){
 		{
 			I2C3_REG_RST();
 		}
+}
+
+/*****************************************************************
+ * @fn			- I2C_MasterSendData
+ *
+ * @brief		-
+ *
+ * @param[in]	-
+ * @param[in]	-
+ * @param[in]	-
+ *
+ * @return		-
+ *
+ * @Note		-
+ *
+ */
+void I2C_MasterSendData(I2C_Handle_t *pI2CHandle, uint8_t *pTxBuffer, uint32_t Len,uint8_t SlaveAddr){
+	//1. Generate the Start Condition
+	I2C_GenerateStartCondition();
+	//2. confirm that start generation is completed by checking the SP flag in the SR1
+	//  Note: Untill SB is cleared SCL will be stretched (pulled to LOW)
+	while(I2C_GetFlagStatus(pI2CHandle->pI2Cx, I2C_FLAG_SB)){
+
+	}
+	//3. Send the address of the slave with r/w bit set to w(0) (total 8 bits)
+	//4. confirm that address phase is completed by checking the ADDR flag in the SR1
+	//5. clear he ADDR flag according to its software sequence
+	//	Note: Untill ADDR is cleared SCL will be stretched (pulled to LOW)
+	//6. send the data untill Len becomes 0
+	//7. when Len becomes 0 wait for TXE=1 and BTF=1 before generating the STOP condition
+	//	Note: TXE=1, BTF=1 means that both SR and DR are empty and next transmission should begin
+	//	when BTF=1 SCL will be stretched (pulled to LOW)
+	//8. Generate STOP condition and master need not to wait for the completion of stop condition.
+	//	Note: generating STOP, automaticaly clears the BTF
+}
+
+/*****************************************************************
+ * @fn			- I2C_MasterSendData
+ *
+ * @brief		-
+ *
+ * @param[in]	-
+ * @param[in]	-
+ * @param[in]	-
+ *
+ * @return		-
+ *
+ * @Note		-
+ *
+ */
+static void I2C_GenerateStartCondition(I2C_RegDef_t *pI2Cx){
+	pI2Cx->CR1 |= (1 << I2C_CR1_START);
 }
 
 /*****************************************************************
